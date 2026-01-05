@@ -1,0 +1,12 @@
+# Terraform
+
+*.tfstate
+*.tfstate.*
+*.tfvars
+override.tf
+override.tf.json
+.terraform.lock.hcl
+
+# OS
+.DS_Store
+Thumbs.db
