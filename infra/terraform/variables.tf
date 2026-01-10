@@ -1,9 +1,7 @@
-variable "account_type" {
-  description = "Tipo de cuenta: api-gateway | qa-service | prod-service | data | bastion"
-  type        = string
+variable "aws_region" {
+  default = "us-east-1"
 }
 
-variable "env" {
-  description = "Entorno: qa | prod"
-  type        = string
+variable "project_name" {
+  default = "academic-linkage-platform"
 }
