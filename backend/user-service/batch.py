@@ -110,7 +110,7 @@ def create_students_and_users(total=100):
     
     db.commit()
     db.close()
-    print(f"✅ ¡{added} estudiantes y usuarios creados!")
+    print(f"✅ ¡{added} students and users created!")
 
 if __name__ == "__main__":
     create_students_and_users(total=100)

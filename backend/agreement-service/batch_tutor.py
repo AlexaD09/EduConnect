@@ -48,7 +48,7 @@ def generate_tutor_profile():
     full_name = f"{random.choice(first_names)} {random.choice(last_names)}"
     return {
         "full_name": full_name,
-        "id_number": str(random.randint(1000000000, 2999999999)),  # Cédula ecuatoriana
+        "id_number": str(random.randint(1000000000, 2999999999)),  
         "city": random.choice(CITIES),
         "contact_email": f"{unidecode.unidecode(full_name.lower().replace(' ', '.'))}{random.choice(EMAIL_DOMAINS)}",
         "contact_phone": f"{random.choice(PHONE_PREFIXES)}{random.randint(1000000, 9999999)}"

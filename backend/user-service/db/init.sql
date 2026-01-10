@@ -12,20 +12,16 @@ BEGIN
 END
 $do$;
 
--- =====================================================
--- Connect to the newly created database
--- =====================================================
+
 \c bd_academic_users;
 
--- =====================================================
--- Tables (en orden correcto)
--- =====================================================
+
 CREATE TABLE IF NOT EXISTS roles (
     id SERIAL PRIMARY KEY,
     name VARCHAR(50) UNIQUE NOT NULL
 );
 
--- Tablas independientes primero
+
 CREATE TABLE IF NOT EXISTS students (
     id SERIAL PRIMARY KEY,
     full_name VARCHAR(255) NOT NULL,
@@ -43,7 +39,7 @@ CREATE TABLE IF NOT EXISTS agreements (
     coordinator_id_number VARCHAR(15) NOT NULL
 );
 
--- Tabla con foreign keys al final
+
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     email VARCHAR(100) UNIQUE NOT NULL,
@@ -61,7 +57,7 @@ CREATE TABLE IF NOT EXISTS batch_control (
 );
 
 -- ===================================================== 
--- Seed data (solo para roles, no para users)
+-- roles
 -- =====================================================
 INSERT INTO roles (name)
 SELECT 'ADMIN' WHERE NOT EXISTS (SELECT 1 FROM roles WHERE name = 'ADMIN');
