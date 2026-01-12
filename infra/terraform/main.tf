@@ -17,11 +17,8 @@ provider "aws" {
 }
 
 ########################################
-# VPC (Simulates one AWS Account)
+# VPC (Simulates ONE AWS Account)
 ########################################
-# This VPC represents ONE isolated AWS account
-# (QA or PROD). Multi-account is simulated by
-# having separate VPCs / states.
 resource "aws_vpc" "main" {
   cidr_block = "10.0.0.0/16"
 }
@@ -31,23 +28,39 @@ resource "aws_internet_gateway" "igw" {
 }
 
 ########################################
-# SUBNETS
+# SUBNETS (2 AZ REQUIRED FOR ALB)
 ########################################
-# Public subnet → Internet / API Gateway
-resource "aws_subnet" "public" {
+
+# Public subnets (API Gateway / Internet)
+resource "aws_subnet" "public_a" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = "10.0.1.0/24"
+  availability_zone       = "us-east-1a"
   map_public_ip_on_launch = true
 }
 
-# Private subnet → ALB + Microservices
-resource "aws_subnet" "private" {
-  vpc_id     = aws_vpc.main.id
-  cidr_block = "10.0.10.0/24"
+resource "aws_subnet" "public_b" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = "10.0.2.0/24"
+  availability_zone       = "us-east-1b"
+  map_public_ip_on_launch = true
+}
+
+# Private subnets (ALB + Microservices)
+resource "aws_subnet" "private_a" {
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = "10.0.10.0/24"
+  availability_zone = "us-east-1a"
+}
+
+resource "aws_subnet" "private_b" {
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = "10.0.11.0/24"
+  availability_zone = "us-east-1b"
 }
 
 ########################################
-# ROUTE TABLES
+# ROUTE TABLE (PUBLIC)
 ########################################
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main.id
@@ -58,8 +71,13 @@ resource "aws_route_table" "public" {
   }
 }
 
-resource "aws_route_table_association" "public_assoc" {
-  subnet_id      = aws_subnet.public.id
+resource "aws_route_table_association" "public_a" {
+  subnet_id      = aws_subnet.public_a.id
+  route_table_id = aws_route_table.public.id
+}
+
+resource "aws_route_table_association" "public_b" {
+  subnet_id      = aws_subnet.public_b.id
   route_table_id = aws_route_table.public.id
 }
 
@@ -67,7 +85,7 @@ resource "aws_route_table_association" "public_assoc" {
 # SECURITY GROUPS
 ########################################
 
-# Internet → NGINX (API Gateway)
+# Internet → API Gateway (NGINX)
 resource "aws_security_group" "nginx_sg" {
   vpc_id = aws_vpc.main.id
 
@@ -86,7 +104,7 @@ resource "aws_security_group" "nginx_sg" {
   }
 }
 
-# NGINX → ALB
+# API Gateway → ALB
 resource "aws_security_group" "alb_sg" {
   vpc_id = aws_vpc.main.id
 
@@ -127,11 +145,10 @@ resource "aws_security_group" "app_sg" {
 ########################################
 # API GATEWAY (NGINX EC2)
 ########################################
-# This EC2 acts as a Docker-based API Gateway
 resource "aws_instance" "nginx" {
-  ami                         = "ami-0c02fb55956c7d316" # Amazon Linux 2
+  ami                         = "ami-0c02fb55956c7d316"
   instance_type               = "t3.micro"
-  subnet_id                   = aws_subnet.public.id
+  subnet_id                   = aws_subnet.public_a.id
   vpc_security_group_ids      = [aws_security_group.nginx_sg.id]
   associate_public_ip_address = true
 
@@ -141,25 +158,32 @@ yum update -y
 amazon-linux-extras install docker -y
 systemctl start docker
 systemctl enable docker
+docker run -d -p 80:80 alexa1209/api-gateway:latest
 EOF
 }
 
-# Static IP → Required for API Gateway
 resource "aws_eip" "api_gateway_ip" {
   instance = aws_instance.nginx.id
 }
 
 ########################################
-# APPLICATION LOAD BALANCER (PRIVATE)
+# APPLICATION LOAD BALANCER
 ########################################
 resource "aws_lb" "alb" {
-  internal           = true
+  name               = "prod-alb"
   load_balancer_type = "application"
-  subnets            = [aws_subnet.private.id]
-  security_groups    = [aws_security_group.alb_sg.id]
+  internal           = true
+
+  subnets = [
+    aws_subnet.private_a.id,
+    aws_subnet.private_b.id
+  ]
+
+  security_groups = [aws_security_group.alb_sg.id]
 }
 
 resource "aws_lb_target_group" "app_tg" {
+  name     = "app-tg"
   port     = 80
   protocol = "HTTP"
   vpc_id   = aws_vpc.main.id
@@ -176,55 +200,22 @@ resource "aws_lb_listener" "http" {
 }
 
 ########################################
-# AUTO SCALING GROUP (PROD ONLY)
+# AUTO SCALING GROUP (PROD)
 ########################################
-# PROD environment with CI/CD via Instance Refresh
 resource "aws_launch_template" "prod" {
   image_id      = "ami-0c02fb55956c7d316"
   instance_type = "t3.micro"
+
   vpc_security_group_ids = [aws_security_group.app_sg.id]
 
   user_data = base64encode(<<EOF
 #!/bin/bash
 yum update -y
-
-# Install Docker
 amazon-linux-extras install docker -y
 systemctl start docker
 systemctl enable docker
 
-# Install docker-compose
-curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-\$(uname -s)-\$(uname -m)" \
--o /usr/local/bin/docker-compose
-chmod +x /usr/local/bin/docker-compose
-
-mkdir -p /opt/app
-cd /opt/app
-
-cat <<EOT > docker-compose.yml
-version: "3.9"
-services:
-  api-gateway:
-    image: alexa1209/api-gateway:latest
-    ports:
-      - "80:80"
-
-  user-service:
-    image: alexa1209/user-service:latest
-
-  activity-service:
-    image: alexa1209/activity-service:latest
-
-  approval-service:
-    image: alexa1209/approval-service:latest
-EOT
-
-docker pull alexa1209/api-gateway:latest
-docker pull alexa1209/user-service:latest
-docker pull alexa1209/activity-service:latest
-docker pull alexa1209/approval-service:latest
-
-docker-compose up -d
+docker run -d -p 80:80 alexa1209/user-service:latest
 EOF
 )
 }
@@ -235,10 +226,11 @@ resource "aws_autoscaling_group" "prod" {
   max_size         = 2
   desired_capacity = 1
 
-  # Private subnet where EC2s will live
-  vpc_zone_identifier = [aws_subnet.private.id]
+  vpc_zone_identifier = [
+    aws_subnet.private_a.id,
+    aws_subnet.private_b.id
+  ]
 
-  # ALB Target Group where instances register
   target_group_arns = [
     aws_lb_target_group.app_tg.arn
   ]
@@ -248,4 +240,3 @@ resource "aws_autoscaling_group" "prod" {
     version = "$Latest"
   }
 }
-
