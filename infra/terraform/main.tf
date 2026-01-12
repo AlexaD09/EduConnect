@@ -235,5 +235,17 @@ resource "aws_autoscaling_group" "prod" {
   max_size         = 2
   desired_capacity = 1
 
+  # Private subnet where EC2s will live
   vpc_zone_identifier = [aws_subnet.private.id]
-  target_group_arns  = [aws_lb_]()
+
+  # ALB Target Group where instances register
+  target_group_arns = [
+    aws_lb_target_group.app_tg.arn
+  ]
+
+  launch_template {
+    id      = aws_launch_template.prod.id
+    version = "$Latest"
+  }
+}
+
