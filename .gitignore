@@ -6,3 +6,7 @@
 
 # Docker
 .dockerignore
+*.tfstate
+*.tfstate.backup
+.terraform/
+!.terraform/modules/
