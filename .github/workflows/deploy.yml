@@ -2,7 +2,7 @@ name: Deploy Infra + Microservices (QA)
 
 on:
   push:
-    branches: [ qa ]
+    branches: [ qa,features ]
   workflow_dispatch:
 
 jobs:
