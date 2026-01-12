@@ -80,7 +80,7 @@ def insert_random_tutors(total=30):
     
     db.commit()
     db.close()
-    print(f"✅ ¡{added} tutores académicos generados automáticamente!")
+    print(f"✅ ¡{added} automatically generated academic tutors!")
 
 # --------------------------------------
 # Execute the insertion

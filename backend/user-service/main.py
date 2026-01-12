@@ -1,14 +1,10 @@
-# main.py - User Service with login, JWT, CORS, rate limiting
+# main.py - User Service with login, JWT
 from fastapi import FastAPI, Depends, HTTPException, status, Request
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from passlib.hash import bcrypt
 from jose import jwt
 from datetime import datetime, timedelta
-from slowapi import Limiter
-from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
 import os
 from fastapi import Body
 from database import SessionLocal
@@ -16,42 +12,10 @@ from models import User,Student, Agreement
 from schemas import UserLogin
 
 
-
-
-
-
 # --------------------------
 # App initialization
 # --------------------------
 app = FastAPI(title="User Service")
-
-
-
-
-# --------------------------
-# CORS configuration
-# --------------------------
-origins = ["http://localhost:3000"]
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# --------------------------
-# Rate limiting (optional)
-# --------------------------
-limiter = Limiter(key_func=get_remote_address)
-app.state.limiter = limiter
-
-@app.exception_handler(RateLimitExceeded)
-def rate_limit_handler(request: Request, exc):
-    return JSONResponse(
-        status_code=429, 
-        content={"detail": "Rate limit exceeded"}
-    )
 
 # --------------------------
 # JWT configuration
@@ -81,9 +45,8 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
 
 # --------------------------
 # Login endpoint
-# --------------------------
-@app.post("/login")
-#@limiter.limit("100/minute")  # optional: 100 requests per minute
+# -------------------------- 
+@app.post("/login") 
 async def login(credentials: UserLogin, db: Session = Depends(get_db)):    
     print("Received credentials:", credentials.username)
     """
@@ -163,7 +126,12 @@ def get_student_by_username(username: str, db: Session = Depends(get_db)):
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
     
-    return {"id": student.id, "username": username, "city": student.city}
+    return {"id": student.id,
+             "username": username, 
+             "city": student.city,
+             "career": student.career,
+             "full_name": student.full_name 
+             }
 
 
 @app.get("/agreements/{agreement_id}")
@@ -176,18 +144,23 @@ def get_agreement_details(agreement_id: int, db: Session = Depends(get_db)):
         "name": agreement.name,
         "institution": agreement.institution,
         "city": agreement.city,
-        "coordinator_name": agreement.coordinator_name
+        "coordinator_name": agreement.coordinator_name,
+        
     }
 
 @app.get("/coordinators/by-username/{username}")
 def get_coordinator_by_username(username: str, db: Session = Depends(get_db)):
-    # Busca en la tabla users donde role_id = 3 (COORDINATOR)
+    
     user = db.query(User).filter(
         User.username == username,
-        User.role_id == 3  # 3 = COORDINATOR
+        User.role_id == 3  
     ).first()
     
     if not user:
         raise HTTPException(status_code=404, detail="Coordinator not found")
     
-    return {"id": user.id, "username": user.username, "agreement_id": user.agreement_id }
+    return {"id": user.id,
+             "username": user.username, 
+             "agreement_id": user.agreement_id,
+             "full_name": user.username
+             }

@@ -1,10 +1,23 @@
 services:
-  db:
+  api-gateway:
+    build: ./backend/api-gateway
+    ports:
+      - "8000:80"
+    depends_on:
+      - user-service
+      - activity-service
+      - agreement-service
+      - approval-service
+    networks:
+      - app-network
+
+
+  user-db:
     image: postgres:15
     container_name: user-db
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: Liliana0912
+      POSTGRES_PASSWORD: userdb123
       POSTGRES_DB: bd_academic_users
     ports:
       - "5433:5432"
@@ -15,32 +28,31 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+    - app-network  
 
   user-service:
     build: ./backend/user-service
     container_name: user-service
     environment:
-      DB_HOST: db
+      DB_HOST: user-db
       DB_PORT: 5432
       DB_NAME: bd_academic_users
       DB_USER: postgres
-      DB_PASSWORD: Liliana0912
+      DB_PASSWORD: userdb123
     depends_on:
-      db:
+      user-db:
         condition: service_healthy
-    ports:
-      - "8001:8000"
+    networks:
+    - app-network  
 
   frontend:
-    build:
-      context: ./frontend/web
-      args:
-        VITE_USER_SERVICE_URL: http://localhost:8001
-       
+    build: ./frontend/web             
     container_name: user-frontend
     ports:
       - "3000:80"
-
+    networks:
+    - app-network
 
   agreement-service:
     build: ./backend/agreement-service
@@ -50,15 +62,15 @@ services:
       DB_PORT: 5432
       DB_NAME: agreement_db
       DB_USER: admin
-      DB_PASSWORD: securepass123  
+      DB_PASSWORD: agreementdb123  
       POSTGRES_DB: agreement_db
     depends_on:
       agreement-db:
         condition: service_healthy  
       user-service:
         condition: service_started
-    ports:
-      - "8002:8000"    
+    networks:
+    - app-network  
       
 
   agreement-db:
@@ -67,7 +79,7 @@ services:
     environment:
       POSTGRES_DB: agreement_db
       POSTGRES_USER: admin
-      POSTGRES_PASSWORD: securepass123
+      POSTGRES_PASSWORD: agreementdb123
     ports:
         - "5434:5432"  
     volumes:
@@ -77,6 +89,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+    - app-network  
 
 
   activity-db:
@@ -85,7 +99,7 @@ services:
     environment:
       POSTGRES_DB: activity_db
       POSTGRES_USER: admin
-      POSTGRES_PASSWORD: securepass123
+      POSTGRES_PASSWORD: activitydb123
       
     ports:
       - "5435:5432"  
@@ -96,6 +110,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+    - app-network
 
   activity-service:
     build: ./backend/activity-service
@@ -105,16 +121,17 @@ services:
       DB_PORT: 5432
       DB_NAME: activity_db
       DB_USER: admin
-      DB_PASSWORD: securepass123
+      DB_PASSWORD: activitydb123
     depends_on:
       activity-db:
         condition: service_healthy
       agreement-service:
         condition: service_started
-    ports:
-      - "8003:8000"  
+    
     volumes:
       - activity_storage:/app/storage
+    networks:
+    - app-network  
 
 
 
@@ -124,7 +141,7 @@ services:
     environment:
       POSTGRES_DB: approval_db
       POSTGRES_USER: admin
-      POSTGRES_PASSWORD: securepass123
+      POSTGRES_PASSWORD: approvaldb123
     ports:
       - "5436:5432"
     volumes:
@@ -134,6 +151,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+    - app-network  
 
   approval-service:
     build: ./backend/approval-service
@@ -143,15 +162,19 @@ services:
       DB_PORT: 5432
       DB_NAME: approval_db
       DB_USER: admin
-      DB_PASSWORD: securepass123
+      DB_PASSWORD: approvaldb123
     depends_on:
       approval-db:
         condition: service_healthy
       activity-service:
         condition: service_started
-    ports:
-      - "8004:8000"
+    
+    networks:
+    - app-network
 
+networks:
+  app-network:
+    driver: bridge
 volumes:
   activity_storage:      
 

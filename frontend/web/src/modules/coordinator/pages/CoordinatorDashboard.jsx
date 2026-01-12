@@ -2,6 +2,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import LogoutButton from "../../../components/LogoutButton";
+import "../CoordinatorDashboard.css";
+
+const API_GATEWAY_URL = import.meta.env.VITE_API_GATEWAY_URL;
 
 export default function CoordinatorDashboard() {
   const tokenData = localStorage.getItem("auth_token");
@@ -20,9 +23,9 @@ export default function CoordinatorDashboard() {
       try {
         const parsedToken = JSON.parse(tokenData);
         const coordinatorUsername = parsedToken.username;
-        
-        
-        const coordResponse = await fetch(`http://localhost:8001/coordinators/by-username/${coordinatorUsername}`);
+
+
+        const coordResponse = await fetch(`${API_GATEWAY_URL}/api/users/coordinators/by-username/${coordinatorUsername}`);
         if (!coordResponse.ok) {
           setStudents([]);
           setStatus("ready");
@@ -37,9 +40,9 @@ export default function CoordinatorDashboard() {
           setStatus("ready");
           return;
         }
-        
-        
-        const activitiesResponse = await fetch(`http://localhost:8003/activities/pending-by-agreement/${agreementId}`);
+
+
+        const activitiesResponse = await fetch(`${API_GATEWAY_URL}/api/activities/pending-by-agreement/${agreementId}`);
         if (!activitiesResponse.ok) {
           setStudents([]);
           setStatus("ready");
@@ -54,7 +57,7 @@ export default function CoordinatorDashboard() {
         
         for (const studentId of studentIds) {
           try {
-            const studentResponse = await fetch(`http://localhost:8001/students/${studentId}`);
+            const studentResponse = await fetch(`${API_GATEWAY_URL}/api/users/students/${studentId}`);
             if (studentResponse.ok) {
               const studentData = await studentResponse.json();
               studentsData.push({

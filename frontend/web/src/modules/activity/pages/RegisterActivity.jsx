@@ -1,6 +1,7 @@
 // frontend/web/src/modules/activity/pages/RegisterActivity.jsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import "../registerActivity.css";
 import { registerActivity } from "../../../services/activity-service";
 import { getStudentIdByUsername } from "../../../services/agreement-service";
 import LogoutButton from "../../../components/LogoutButton";
@@ -111,14 +112,14 @@ const handleSubmit = async (e) => {
           
           <div className="d-grid gap-2">
             <button type="submit" className="btn btn-primary">
-              Registrar Actividad
+              Record Activity
             </button>
             <button 
               type="button" 
               className="btn btn-secondary"
               onClick={() => navigate("/dashboard/student")}
             >
-              Cancelar
+              Cancel
             </button>
           </div>
         </form>

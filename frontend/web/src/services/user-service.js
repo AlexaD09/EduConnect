@@ -1,7 +1,8 @@
-const API_URL = import.meta.env.VITE_USER_SERVICE_URL;
+const API_GATEWAY_URL = import.meta.env.VITE_API_GATEWAY_URL;
+console.log("API_GATEWAY_URL:", API_GATEWAY_URL);
 
 export async function loginUser(username, password) {
-  const res = await fetch(`${API_URL}/login`, {
+  const res = await fetch(`${API_GATEWAY_URL}/api/users/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({username, password }),

@@ -1,5 +1,4 @@
 from fastapi import FastAPI, Depends, HTTPException, File, UploadFile, Form
-from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from database import SessionLocal, Base, engine
 from services.activity_service import create_activity
@@ -12,14 +11,6 @@ os.makedirs("/app/storage", exist_ok=True)
 
 app = FastAPI(title="Activity Service")
 
-origins = ["http://localhost:3000"]
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 Base.metadata.create_all(bind=engine)
 
@@ -30,7 +21,7 @@ def get_db():
     finally:
         db.close()
 
-@app.post("/activities")
+@app.post("/activity")
 async def register_activity(
     student_id: int = Form(...),
     description: str = Form(...),
@@ -65,7 +56,7 @@ async def register_activity(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error saving photos: {str(e)}")
     
-@app.get("/activities/student/{student_id}")
+@app.get("/student/{student_id}")
 def get_student_activities(student_id: int, db: Session = Depends(get_db)):
     activities = db.query(Activity).filter(Activity.student_id == student_id).all()
     return [
@@ -83,7 +74,7 @@ def get_student_activities(student_id: int, db: Session = Depends(get_db)):
 
 
 
-@app.get("/activities/pending-by-agreement/{agreement_id}")
+@app.get("/pending-by-agreement/{agreement_id}")
 def get_pending_activities_by_agreement(agreement_id: int, db: Session = Depends(get_db)):
     activities = db.query(Activity).filter(
         Activity.agreement_id == agreement_id,
@@ -98,7 +89,7 @@ def get_pending_activities_by_agreement(agreement_id: int, db: Session = Depends
 
 
 
-@app.get("/activities/{activity_id}")
+@app.get("/student-activity/{activity_id}")
 def get_activity_details(activity_id: int, db: Session = Depends(get_db)):
     activity = db.query(Activity).filter(Activity.id == activity_id).first()
     if not activity:
@@ -114,3 +105,18 @@ def get_activity_details(activity_id: int, db: Session = Depends(get_db)):
         "status": activity.status,
         "created_at": activity.created_at.strftime("%Y-%m-%d %H:%M:%S")
     }
+
+@app.patch("/{activity_id}/status")   
+def update_activity_status(
+    activity_id: int,
+    data: ActivityStatusUpdate,
+    db: Session = Depends(get_db)
+):
+    activity = db.query(Activity).filter(Activity.id == activity_id).first()
+
+    if not activity:
+        raise HTTPException(status_code=404, detail="Activity not found")
+
+    activity.status = data.status
+    db.commit()
+    return {"message": "Status updated"}

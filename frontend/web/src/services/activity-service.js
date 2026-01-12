@@ -1,10 +1,11 @@
 // frontend/web/src/services/activity-service.js
-const ACTIVITY_SERVICE_URL = "http://localhost:8003";
+const API_GATEWAY_URL = import.meta.env.VITE_API_GATEWAY_URL;
+
 
 export async function registerActivity(formData) {
-  const response = await fetch(`${ACTIVITY_SERVICE_URL}/activities`, {
+  const response = await fetch(`${API_GATEWAY_URL}/api/activities/activity`, {
     method: "POST",
-    body: formData  // ¡FormData en lugar de JSON!
+    body: formData  
   });
   
   if (!response.ok) {
@@ -16,6 +17,6 @@ export async function registerActivity(formData) {
 }
 
 export async function getStudentActivities(studentId) {
-  const response = await fetch(`http://localhost:8003/activities/student/${studentId}`);
+  const response = await fetch(`${API_GATEWAY_URL}/api/activities/student/${studentId}`);
   return await response.json();
 }

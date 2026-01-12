@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import LogoutButton from "../../../components/LogoutButton";
+import "../ActivityDetail.css";
+const API_GATEWAY_URL = import.meta.env.VITE_API_GATEWAY_URL;
 
 export default function ActivityDetail() {
 
@@ -23,7 +25,7 @@ useEffect(() => {
   const fetchActivityDetails = async () => {
     try {
       const tokenData = JSON.parse(localStorage.getItem("auth_token"));
-      const response = await fetch(`http://localhost:8003/activities/${activityId}`, {
+      const response = await fetch(`${API_GATEWAY_URL}/api/activities/student-activity/${activityId}`, {
         headers: {
           "Authorization": `Bearer ${tokenData.token}`
         }
@@ -31,9 +33,9 @@ useEffect(() => {
       
       if (response.ok) {
         const activityData = await response.json();
-        
-        
-        const studentResponse = await fetch(`http://localhost:8001/students/${activityData.student_id}`);
+
+
+        const studentResponse = await fetch(`${API_GATEWAY_URL}/api/users/students/${activityData.student_id}`);
         const studentData = studentResponse.ok ? await studentResponse.json() : {};
         
         setActivity({
@@ -60,7 +62,7 @@ useEffect(() => {
   const handleApprove = async () => {
     try {
       const tokenData = JSON.parse(localStorage.getItem("auth_token"));
-      const response = await fetch(`http://localhost:8004/activities/${activityId}/approve`, {
+      const response = await fetch(`${API_GATEWAY_URL}/api/approvals/activities/${activityId}/approve`, {
         method: "PATCH",
         headers: {
           "Authorization": `Bearer ${tokenData.token}`,
@@ -90,7 +92,7 @@ useEffect(() => {
     
     try {
       const tokenData = JSON.parse(localStorage.getItem("auth_token"));
-      const response = await fetch(`http://localhost:8004/activities/${activityId}/reject`, {
+      const response = await fetch(`${API_GATEWAY_URL}/api/approvals/activities/${activityId}/reject`, {
         method: "PATCH",
         headers: {
           "Authorization": `Bearer ${tokenData.token}`,
@@ -169,9 +171,9 @@ useEffect(() => {
                 
                 <div className="row">
                   <div className="col-md-6">
-                    <strong>Entry Photo:</strong>
+                    <strong>Entry Photo:</strong> 
                     <img 
-                      src={`http://localhost:8003${activity.entryPhoto}`} 
+                      src={`${API_GATEWAY_URL}/api/activities/${activity.entryPhoto}`} 
                       alt="Entry" 
                       className="img-fluid mt-2"
                       style={{ maxHeight: '300px', objectFit: 'cover' }}
@@ -180,7 +182,7 @@ useEffect(() => {
                   <div className="col-md-6">
                     <strong>Exit Photo:</strong>
                     <img 
-                      src={`http://localhost:8003${activity.exitPhoto}`} 
+                      src={`${API_GATEWAY_URL}/api/activities/${activity.exitPhoto}`} 
                       alt="Exit" 
                       className="img-fluid mt-2"
                       style={{ maxHeight: '300px', objectFit: 'cover' }}

@@ -5,11 +5,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install
 
-COPY . .
-
-# Pasa la variable de build como ARG + ENV
-ARG VITE_USER_SERVICE_URL
-ENV VITE_USER_SERVICE_URL=$VITE_USER_SERVICE_URL
+COPY . .  
 
 RUN npm run build
 

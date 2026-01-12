@@ -6,7 +6,7 @@ import {
   getAgreementDetails,
   getTutorDetails
 } from "../../../services/agreement-service";
-import { getStudentActivities } from "../../../services/activity-service"; // ← Nuevo import
+import { getStudentActivities } from "../../../services/activity-service"; 
 import { useNavigate } from "react-router-dom";
 import LogoutButton from "../../../components/LogoutButton";
 
@@ -22,61 +22,64 @@ export default function StudentDashboard() {
   const [status, setStatus] = useState("loading");
   const [assignmentInfo, setAssignmentInfo] = useState(null);
   const [studentInfo, setStudentInfo] = useState(null);
-  const [agreementName, setAgreementName] = useState("");
-  const [tutorName, setTutorName] = useState("");
-  const [activities, setActivities] = useState([]); // ← Nuevo estado
+  const [agreementName, setAgreementName] = useState(null);
+  const [tutorName, setTutorName] = useState(null);
+  const [activities, setActivities] = useState([]); 
   
 
   useEffect(() => {
-    const initializeDashboard = async () => {
-      try {
-        const authData = localStorage.getItem("auth_token");
-        if (!authData) {
-          throw new Error("No authentication data found");
-        }
-        
-        const { username } = JSON.parse(authData);
-        const student = await getStudentIdByUsername(username);
-        setStudentInfo(student);
-        
-        // Obtener actividades del estudiante
-        const studentActivities = await getStudentActivities(student.id);
-        setActivities(studentActivities);
-        
-        const assignment = await checkAssignment(student.id);
-        if (!assignment.has_assignment) {
-          await createAssignment(student.id);
-          const newAssignment = await checkAssignment(student.id);
-          setAssignmentInfo(newAssignment);
-          
-          const agreement = await getAgreementDetails(newAssignment.agreement_id);
-          const tutor = await getTutorDetails(newAssignment.tutor_id);
-          setAgreementName(agreement.name || `Agreement ${newAssignment.agreement_id}`);
-          setTutorName(tutor.full_name || `Tutor ${newAssignment.tutor_id}`);
-        } else {
-          setAssignmentInfo(assignment);
-          
-          const agreement = await getAgreementDetails(assignment.agreement_id);
-          const tutor = await getTutorDetails(assignment.tutor_id);
-          setAgreementName(agreement.name || `Agreement ${assignment.agreement_id}`);
-          setTutorName(tutor.full_name || `Tutor ${assignment.tutor_id}`);
-        }
-        
-        setStatus("ready");
-      } catch (error) {
-        console.error("Error initializing dashboard:", error);
-        setStatus("error");
+  const initializeDashboard = async () => {
+    try {
+      const authData = localStorage.getItem("auth_token");
+      if (!authData) {
+        throw new Error("No authentication data found");
       }
-    };
+      
+      const { username } = JSON.parse(authData);
+      const student = await getStudentIdByUsername(username);
+      setStudentInfo(student);
+      
+      // Get student activities
+      const studentActivities = await getStudentActivities(student.id);
+      setActivities(studentActivities);
+      
+      let assignment = await checkAssignment(student.id);
+      
+      // Si no tiene asignación, crear una
+      if (!assignment.has_assignment) {
+        await createAssignment(student.id);
+        assignment = await checkAssignment(student.id); // Obtener la nueva asignación
+      }
+      
+      setAssignmentInfo(assignment);
+      
+      // Obtener detalles del agreement y tutor
+      const agreement = await getAgreementDetails(assignment.agreement_id);
+      const tutor = await getTutorDetails(assignment.tutor_id);
+      
+      // Siempre usar el mismo formato (objeto)
+      setAgreementName({
+        institution: agreement.institution || agreement.name || `Agreement ${assignment.agreement_id}`,
+        coordinator: agreement.coordinator_name || 'Not assigned'
+      });
+      
+      setTutorName(tutor.full_name || `Tutor ${assignment.tutor_id}`);
+      
+      setStatus("ready");
+    } catch (error) {
+      console.error("Error initializing dashboard:", error);
+      setStatus("error");
+    }
+  };
 
-    initializeDashboard();
-  }, []);
+  initializeDashboard();
+}, []);
 
   const handleRegisterActivity = () => {
     navigate("/activity/register");
   };
 
-  // Función para mostrar estado con colores
+  // Function to display status with colors
   const getStatusBadge = (status) => {
     const statusConfig = {
       PENDING: { text: "Pending", class: "bg-warning" },
@@ -139,7 +142,7 @@ export default function StudentDashboard() {
 
       <div className="container-fluid px-4 py-4">
         <div className="row g-4">
-          {/* Información académica */}
+          {/* Academic information */}
           <div className="col-12">
             <div className="card shadow-sm">
               <div className="card-header bg-info text-white">
@@ -150,7 +153,7 @@ export default function StudentDashboard() {
                   <div className="row mb-3">
                     <div className="col-md-6 col-lg-4">
                       <strong>Student:</strong>
-                      <p className="text-muted">{studentInfo.username}</p>
+                      <p className="text-muted">{studentInfo.full_name}</p>
                     </div>
                     <div className="col-md-6 col-lg-4">
                       <strong>City:</strong>
@@ -167,19 +170,24 @@ export default function StudentDashboard() {
                   <div className="row">
                     <div className="col-md-6">
                       <strong>Assigned Agreement:</strong>
-                      <p className="text-muted fw-bold">{agreementName}</p>
+                      <p className="text-muted fw-bold">{agreementName.institution}</p>
+                    </div>
+                    <div className="col-md-6">
+                      <strong>Agreement Coordinator:</strong>
+                      <p className="text-muted fw-bold">{agreementName.coordinator}</p>
                     </div>
                     <div className="col-md-6">
                       <strong>Academic Tutor:</strong>
                       <p className="text-muted fw-bold">{tutorName}</p>
                     </div>
+                    
                   </div>
                 )}
               </div>
             </div>
           </div>
 
-          {/* Botón de registro */}
+          {/* Registration button */}
           <div className="col-12">
             <div className="d-grid gap-2">
               <button 
@@ -192,7 +200,7 @@ export default function StudentDashboard() {
             </div>
           </div>
 
-          {/* Estado de asignación */}
+          {/* Allocation status */}
           <div className="col-lg-4 col-md-6">
             <div className="card shadow-sm h-100">
               <div className="card-header bg-success text-white">
@@ -209,7 +217,7 @@ export default function StudentDashboard() {
             </div>
           </div>
 
-          {/* Lista de actividades */}
+          {/* List of activities */}
           <div className="col-lg-8 col-md-6">
             <div className="card shadow-sm h-100">
               <div className="card-header bg-primary text-white">

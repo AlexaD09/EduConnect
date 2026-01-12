@@ -1,0 +1,14 @@
+{
+  "name": "academic-platform",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "frontend/*"
+  ],
+  "devDependencies": {
+    "turbo": "^1.12.0"
+  },
+  "scripts": {
+    "build": "turbo run build"
+  }
+}

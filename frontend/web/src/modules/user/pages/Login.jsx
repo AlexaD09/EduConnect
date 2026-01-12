@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { loginUser } from "../../../services/user-service";
 import { useNavigate } from "react-router-dom"; // ← Agrega esto
-import "../user.css";
+import "../Login.css";
 
 export default function Login() {
   const [username, setUsername] = useState(""); 

@@ -1,6 +1,5 @@
 # backend/agreement-service/main.py
 from fastapi import FastAPI, Depends, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from database import SessionLocal
@@ -13,17 +12,6 @@ import requests
 # --------------------------
 app = FastAPI(title="Agreement Assignment Service")
 
-# --------------------------
-# CORS configuration
-# --------------------------
-origins = ["http://localhost:3000"]
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 # --------------------------
 # Database session dependency

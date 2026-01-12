@@ -4,24 +4,24 @@ from api_clients.user_service_client import get_student_city, get_agreements_by_
 import random
 
 def assign_agreement_and_tutor(db: Session, student_id: int):
-    # 1. Obtener ciudad del estudiante
+    # 1. City
     city = get_student_city(student_id)
     
-    # 2. Obtener convenios disponibles
+    # 2. Agreements
     agreements = get_agreements_by_city(city)
     if not agreements:
         raise ValueError(f"No hay convenios en {city}")
     
     agreement_id = agreements[0]["id"]
     
-    # 3. Asignar tutor aleatorio (CUALQUIERA, no solo de la ciudad)
+    # 3. Assingt the tutor aleatoriamente
     tutors = db.query(Tutor).all()
     if not tutors:
         raise ValueError("No hay tutores disponibles")
     
     tutor = random.choice(tutors)
     
-    # 4. Guardar asignación
+    
     assignment = Assignment(
         student_id=student_id,
         agreement_id=agreement_id,

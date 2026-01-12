@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import LogoutButton from "../../../components/LogoutButton";
+import "../PendingActivities.css";
+
+const API_GATEWAY_URL = import.meta.env.VITE_API_GATEWAY_URL;
 
 export default function PendingActivities() {
 
@@ -20,7 +23,7 @@ export default function PendingActivities() {
     const fetchPendingActivities = async () => {
       try {
         const tokenData = JSON.parse(localStorage.getItem("auth_token"));
-        const response = await fetch(`http://localhost:8003/activities/student/${studentId}`, {
+        const response = await fetch(`${API_GATEWAY_URL}/api/activities/student/${studentId}`, {
           headers: {
             "Authorization": `Bearer ${tokenData.token}`
           }
