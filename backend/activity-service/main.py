@@ -106,17 +106,4 @@ def get_activity_details(activity_id: int, db: Session = Depends(get_db)):
         "created_at": activity.created_at.strftime("%Y-%m-%d %H:%M:%S")
     }
 
-@app.patch("/{activity_id}/status")   
-def update_activity_status(
-    activity_id: int,
-    data: ActivityStatusUpdate,
-    db: Session = Depends(get_db)
-):
-    activity = db.query(Activity).filter(Activity.id == activity_id).first()
-
-    if not activity:
-        raise HTTPException(status_code=404, detail="Activity not found")
-
-    activity.status = data.status
-    db.commit()
-    return {"message": "Status updated"}
+ 
