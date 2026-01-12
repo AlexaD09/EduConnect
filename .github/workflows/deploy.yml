@@ -1,4 +1,4 @@
-name: Deploy Microservices to AWS
+name: Deploy Microservices to AWS (QA)
 
 on:
   push:
@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout repo
+      # 1️⃣ Clonar repo
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -22,6 +22,16 @@ jobs:
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
       # 3️⃣ Build & Push images
+      - name: Build & Push API Gateway
+        run: |
+          docker build -t alexa1209/api-gateway:latest backend/api-gateway
+          docker push alexa1209/api-gateway:latest
+
+      - name: Build & Push User Service
+        run: |
+          docker build -t alexa1209/user-service:latest backend/user-service
+          docker push alexa1209/user-service:latest
+
       - name: Build & Push Activity Service
         run: |
           docker build -t alexa1209/activity-service:latest backend/activity-service
@@ -32,17 +42,7 @@ jobs:
           docker build -t alexa1209/approval-service:latest backend/approval-service
           docker push alexa1209/approval-service:latest
 
-      - name: Build & Push User Service
-        run: |
-          docker build -t alexa1209/user-service:latest backend/user-service
-          docker push alexa1209/user-service:latest
-
-      - name: Build & Push API Gateway
-        run: |
-          docker build -t alexa1209/api-gateway:latest backend/api-gateway
-          docker push alexa1209/api-gateway:latest
-
-      # 4️⃣ AWS Credentials
+      # 4️⃣ AWS Credentials (Academy)
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -51,18 +51,19 @@ jobs:
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: us-east-1
 
-      # 5️⃣ INSTALL TERRAFORM (🔥 LO QUE FALTABA 🔥)
-      - name: Setup Terraform
+      # 5️⃣ INSTALAR TERRAFORM (ESTO TE FALTABA)
+      - name: Install Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.6.6
 
-      # 6️⃣ Terraform Init & Apply
+      # 6️⃣ Terraform Init
       - name: Terraform Init
         run: |
           cd infra/terraform
           terraform init
 
+      # 7️⃣ Terraform Apply
       - name: Terraform Apply
         run: |
           cd infra/terraform
