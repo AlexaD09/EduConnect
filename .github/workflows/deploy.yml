@@ -1,4 +1,4 @@
-name: Deploy Infra + Microservices (QA)
+name: Deploy Microservices to AWS
 
 on:
   push:
@@ -10,26 +10,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
+      # 1️⃣ Checkout repo
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      # -------------------------------
-      # Docker Hub Login
-      # -------------------------------
+      # 2️⃣ Login Docker Hub
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
-      # -------------------------------
-      # Build & Push Images
-      # -------------------------------
-      - name: Build & Push User Service
-        run: |
-          docker build -t alexa1209/user-service:latest backend/user-service
-          docker push alexa1209/user-service:latest
-
+      # 3️⃣ Build & Push images
       - name: Build & Push Activity Service
         run: |
           docker build -t alexa1209/activity-service:latest backend/activity-service
@@ -40,14 +32,17 @@ jobs:
           docker build -t alexa1209/approval-service:latest backend/approval-service
           docker push alexa1209/approval-service:latest
 
+      - name: Build & Push User Service
+        run: |
+          docker build -t alexa1209/user-service:latest backend/user-service
+          docker push alexa1209/user-service:latest
+
       - name: Build & Push API Gateway
         run: |
           docker build -t alexa1209/api-gateway:latest backend/api-gateway
           docker push alexa1209/api-gateway:latest
 
-      # -------------------------------
-      # AWS Credentials
-      # -------------------------------
+      # 4️⃣ AWS Credentials
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -56,9 +51,13 @@ jobs:
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: us-east-1
 
-      # -------------------------------
-      # Terraform Apply
-      # -------------------------------
+      # 5️⃣ INSTALL TERRAFORM (🔥 LO QUE FALTABA 🔥)
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.6
+
+      # 6️⃣ Terraform Init & Apply
       - name: Terraform Init
         run: |
           cd infra/terraform
