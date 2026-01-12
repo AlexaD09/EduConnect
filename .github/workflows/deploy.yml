@@ -1,9 +1,10 @@
 name: Deploy Microservices to AWS (QA)
 
-on:
-  push:
-    branches: [ qa,features ]
-  workflow_dispatch:
+# --- Deshabilitamos temporalmente el disparador para PR limpio ---
+# on:
+#   push:
+#     branches: [ qa,features ]
+#   workflow_dispatch:
 
 jobs:
   deploy:
