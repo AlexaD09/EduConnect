@@ -1,0 +1,12 @@
+
+.env
+.env.local
+.env.development
+.env.production
+
+# Docker
+.dockerignore
+*.tfstate
+*.tfstate.backup
+.terraform/
+!.terraform/modules/

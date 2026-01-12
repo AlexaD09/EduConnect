@@ -1,0 +1,180 @@
+services:
+  api-gateway:
+    build: ./backend/api-gateway
+    ports:
+      - "8000:80"
+    depends_on:
+      - user-service
+      - activity-service
+      - agreement-service
+      - approval-service
+    networks:
+      - app-network
+
+
+  user-db:
+    image: postgres:15
+    container_name: user-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: userdb123
+      POSTGRES_DB: bd_academic_users
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./backend/user-service/db:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d bd_academic_users"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+    - app-network  
+
+  user-service:
+    build: ./backend/user-service
+    container_name: user-service
+    environment:
+      DB_HOST: user-db
+      DB_PORT: 5432
+      DB_NAME: bd_academic_users
+      DB_USER: postgres
+      DB_PASSWORD: userdb123
+    depends_on:
+      user-db:
+        condition: service_healthy
+    networks:
+    - app-network  
+
+  frontend:
+    build: ./frontend/web             
+    container_name: user-frontend
+    ports:
+      - "3000:80"
+    networks:
+    - app-network
+
+  agreement-service:
+    build: ./backend/agreement-service
+    container_name: agreement-service
+    environment:
+      DB_HOST: agreement-db
+      DB_PORT: 5432
+      DB_NAME: agreement_db
+      DB_USER: admin
+      DB_PASSWORD: agreementdb123  
+      POSTGRES_DB: agreement_db
+    depends_on:
+      agreement-db:
+        condition: service_healthy  
+      user-service:
+        condition: service_started
+    networks:
+    - app-network  
+      
+
+  agreement-db:
+    image: postgres:15-alpine
+    container_name: agreement-db
+    environment:
+      POSTGRES_DB: agreement_db
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: agreementdb123
+    ports:
+        - "5434:5432"  
+    volumes:
+      - ./backend/agreement-service/db:/docker-entrypoint-initdb.d
+    healthcheck:  
+      test: ["CMD-SHELL", "pg_isready -U admin -d agreement_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+    - app-network  
+
+
+  activity-db:
+    image: postgres:15-alpine
+    container_name: activity-db
+    environment:
+      POSTGRES_DB: activity_db
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: activitydb123
+      
+    ports:
+      - "5435:5432"  
+    volumes:
+      - ./backend/activity-service/db:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d activity_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+    - app-network
+
+  activity-service:
+    build: ./backend/activity-service
+    container_name: activity-service
+    environment:
+      DB_HOST: activity-db
+      DB_PORT: 5432
+      DB_NAME: activity_db
+      DB_USER: admin
+      DB_PASSWORD: activitydb123
+    depends_on:
+      activity-db:
+        condition: service_healthy
+      agreement-service:
+        condition: service_started
+    
+    volumes:
+      - activity_storage:/app/storage
+    networks:
+    - app-network  
+
+
+
+  approval-db:
+    image: postgres:15-alpine
+    container_name: approval-db
+    environment:
+      POSTGRES_DB: approval_db
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: approvaldb123
+    ports:
+      - "5436:5432"
+    volumes:
+      - ./backend/approval-service/db:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d approval_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+    - app-network  
+
+  approval-service:
+    build: ./backend/approval-service
+    container_name: approval-service
+    environment:
+      DB_HOST: approval-db
+      DB_PORT: 5432
+      DB_NAME: approval_db
+      DB_USER: admin
+      DB_PASSWORD: approvaldb123
+    depends_on:
+      approval-db:
+        condition: service_healthy
+      activity-service:
+        condition: service_started
+    
+    networks:
+    - app-network
+
+networks:
+  app-network:
+    driver: bridge
+volumes:
+  activity_storage:      
+
