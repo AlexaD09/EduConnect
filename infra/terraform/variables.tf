@@ -25,5 +25,5 @@ variable "instance_type" {
 variable "admin_cidr" {
   description = "Admin IP for Bastion access"
   type        = string
-  default     = "0.0.0.0/0"
+  default     = "45.236.107.170/32"
 }

@@ -1,10 +1,9 @@
-# Frontend Web
 resource "aws_instance" "frontend_web" {
   count    = var.env == "qa" || var.env == "prod" ? 1 : 0
   provider = aws.frontend
   ami      = var.ami_id
   instance_type = var.instance_type
-  vpc_security_group_ids = [aws_security_group.frontend.id]
+  vpc_security_group_ids = [aws_security_group.frontend[count.index].id]
   user_data_base64 = base64encode(<<EOF
 #!/bin/bash
 yum update -y
@@ -16,13 +15,12 @@ EOF
   tags = { Name = "${var.env}-frontend-web" }
 }
 
-# Frontend Mobile
 resource "aws_instance" "frontend_mobile" {
   count    = var.env == "qa" || var.env == "prod" ? 1 : 0
   provider = aws.frontend
   ami      = var.ami_id
   instance_type = var.instance_type
-  vpc_security_group_ids = [aws_security_group.frontend.id]
+  vpc_security_group_ids = [aws_security_group.frontend[count.index].id]
   user_data_base64 = base64encode(<<EOF
 #!/bin/bash
 yum update -y
@@ -34,13 +32,12 @@ EOF
   tags = { Name = "${var.env}-frontend-mobile" }
 }
 
-# Frontend Desktop
 resource "aws_instance" "frontend_desktop" {
   count    = var.env == "qa" || var.env == "prod" ? 1 : 0
   provider = aws.frontend
   ami      = var.ami_id
   instance_type = var.instance_type
-  vpc_security_group_ids = [aws_security_group.frontend.id]
+  vpc_security_group_ids = [aws_security_group.frontend[count.index].id]
   user_data_base64 = base64encode(<<EOF
 #!/bin/bash
 yum update -y
@@ -52,13 +49,12 @@ EOF
   tags = { Name = "${var.env}-frontend-desktop" }
 }
 
-# API Gateway
 resource "aws_instance" "api_gateway" {
   count    = var.env == "qa" || var.env == "prod" ? 1 : 0
   provider = aws.frontend
   ami      = var.ami_id
   instance_type = var.instance_type
-  vpc_security_group_ids = [aws_security_group.frontend.id]
+  vpc_security_group_ids = [aws_security_group.frontend[count.index].id]
   user_data_base64 = base64encode(<<EOF
 #!/bin/bash
 yum update -y

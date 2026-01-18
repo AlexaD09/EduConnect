@@ -1,10 +1,9 @@
-# Bases de datos
 resource "aws_instance" "postgres" {
   count    = var.env == "qa" || var.env == "prod" ? 1 : 0
   provider = aws.databases
   ami      = var.ami_id
   instance_type = var.instance_type
-  vpc_security_group_ids = [aws_security_group.databases.id]
+  vpc_security_group_ids = [aws_security_group.databases[count.index].id]
   user_data_base64 = base64encode(<<EOF
 #!/bin/bash
 yum update -y
@@ -21,7 +20,7 @@ resource "aws_instance" "redis" {
   provider = aws.databases
   ami      = var.ami_id
   instance_type = var.instance_type
-  vpc_security_group_ids = [aws_security_group.databases.id]
+  vpc_security_group_ids = [aws_security_group.databases[count.index].id]
   user_data_base64 = base64encode(<<EOF
 #!/bin/bash
 yum update -y
@@ -38,7 +37,7 @@ resource "aws_instance" "kafka" {
   provider = aws.databases
   ami      = var.ami_id
   instance_type = var.instance_type
-  vpc_security_group_ids = [aws_security_group.databases.id]
+  vpc_security_group_ids = [aws_security_group.databases[count.index].id]
   user_data_base64 = base64encode(<<EOF
 #!/bin/bash
 yum update -y
