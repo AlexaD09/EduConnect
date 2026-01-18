@@ -5,40 +5,119 @@ on:
       environment:
         description: 'Environment to destroy'
         required: true
-        default: 'qa,features'
+        default: 'qa'
         type: choice
         options:
         - qa
-        - features
         - prod
 
 jobs:
-  destroy:
+  destroy-frontend:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        account: [frontend, ms_a, ms_b, databases, bastion]
-    
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: Configure AWS Credentials
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        aws-access-key-id: ${{ secrets[format('AWS_{0}_ACCESS_KEY_ID', upper(matrix.account))] }}
-        aws-secret-access-key: ${{ secrets[format('AWS_{0}_SECRET_ACCESS_KEY', upper(matrix.account))] }}
-        aws-session-token: ${{ secrets[format('AWS_{0}_SESSION_TOKEN', upper(matrix.account))] }}
-        aws-region: us-east-1
-    
-    - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v2
-    
-    - name: Terraform Init
-      run: |
-        cd infra/terraform
-        terraform init
-    
-    - name: Terraform Destroy
-      run: |
-        cd infra/terraform
-        terraform destroy -var-file="${{ github.event.inputs.environment }}.tfvars" -auto-approve
+      - uses: actions/checkout@v3
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_FRONTEND_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_FRONTEND_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_FRONTEND_SESSION_TOKEN }}
+          aws-region: us-east-1
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+      - name: Terraform Init
+        run: |
+          cd infra/terraform
+          terraform init
+      - name: Terraform Destroy
+        run: |
+          cd infra/terraform
+          terraform destroy -var-file="${{ github.event.inputs.environment }}.tfvars" -auto-approve
+
+  destroy-ms-a:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_MS_A_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_MS_A_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_MS_A_SESSION_TOKEN }}
+          aws-region: us-east-1
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+      - name: Terraform Init
+        run: |
+          cd infra/terraform
+          terraform init
+      - name: Terraform Destroy
+        run: |
+          cd infra/terraform
+          terraform destroy -var-file="${{ github.event.inputs.environment }}.tfvars" -auto-approve
+
+  destroy-ms-b:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_MS_B_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_MS_B_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_MS_B_SESSION_TOKEN }}
+          aws-region: us-east-1
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+      - name: Terraform Init
+        run: |
+          cd infra/terraform
+          terraform init
+      - name: Terraform Destroy
+        run: |
+          cd infra/terraform
+          terraform destroy -var-file="${{ github.event.inputs.environment }}.tfvars" -auto-approve
+
+  destroy-databases:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_DATABASES_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_DATABASES_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_DATABASES_SESSION_TOKEN }}
+          aws-region: us-east-1
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+      - name: Terraform Init
+        run: |
+          cd infra/terraform
+          terraform init
+      - name: Terraform Destroy
+        run: |
+          cd infra/terraform
+          terraform destroy -var-file="${{ github.event.inputs.environment }}.tfvars" -auto-approve
+
+  destroy-bastion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_BASTION_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_BASTION_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_BASTION_SESSION_TOKEN }}
+          aws-region: us-east-1
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+      - name: Terraform Init
+        run: |
+          cd infra/terraform
+          terraform init
+      - name: Terraform Destroy
+        run: |
+          cd infra/terraform
+          terraform destroy -var-file="${{ github.event.inputs.environment }}.tfvars" -auto-approve
