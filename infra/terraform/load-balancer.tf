@@ -18,6 +18,6 @@ resource "aws_lb_target_group" "frontend" {
   name            = "${var.env}-frontend-tg"
   port            = 80
   protocol        = "HTTP"
-  vpc_id          = var.env == "qa" ? aws_vpc.qa_frontend.id : aws_vpc.prod_frontend.id
+  vpc_id          = aws_vpc.frontend.id  # ← Usa el nombre correcto
   target_type     = "instance"
 }
