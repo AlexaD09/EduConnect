@@ -1,7 +1,7 @@
 # Security Group Frontend
 resource "aws_security_group" "frontend" {
   provider = aws.frontend
-  vpc_id   = aws_vpc.frontend.id
+  # vpc_id REMOVIDO - usa VPC por defecto
   name     = "${var.env}-frontend-sg"
   
   ingress {
@@ -22,7 +22,7 @@ resource "aws_security_group" "frontend" {
 # Security Group Bastion
 resource "aws_security_group" "bastion" {
   provider = aws.bastion
-  vpc_id   = aws_vpc.bastion.id
+  # vpc_id REMOVIDO
   name     = "${var.env}-bastion-sg"
   
   ingress {
@@ -43,7 +43,7 @@ resource "aws_security_group" "bastion" {
 # Security Group Internal MS-A
 resource "aws_security_group" "internal_ms_a" {
   provider = aws.ms_a
-  vpc_id   = aws_vpc.ms_a.id
+  # vpc_id REMOVIDO
   name     = "${var.env}-ms-a-internal-sg"
   
   ingress {
@@ -57,7 +57,7 @@ resource "aws_security_group" "internal_ms_a" {
     from_port   = 0
     to_port     = 65535
     protocol    = "tcp"
-    cidr_blocks = [var.vpc_cidr[var.env]]
+    cidr_blocks = ["10.0.0.0/16"]  # Ajusta según necesidad
   }
   
   egress {
@@ -71,7 +71,7 @@ resource "aws_security_group" "internal_ms_a" {
 # Security Group Internal MS-B
 resource "aws_security_group" "internal_ms_b" {
   provider = aws.ms_b
-  vpc_id   = aws_vpc.ms_b.id
+  # vpc_id REMOVIDO
   name     = "${var.env}-ms-b-internal-sg"
   
   ingress {
@@ -85,7 +85,7 @@ resource "aws_security_group" "internal_ms_b" {
     from_port   = 0
     to_port     = 65535
     protocol    = "tcp"
-    cidr_blocks = [var.vpc_cidr[var.env]]
+    cidr_blocks = ["10.0.0.0/16"]
   }
   
   egress {
@@ -99,7 +99,7 @@ resource "aws_security_group" "internal_ms_b" {
 # Security Group Internal Databases
 resource "aws_security_group" "internal_databases" {
   provider = aws.databases
-  vpc_id   = aws_vpc.databases.id
+  # vpc_id REMOVIDO
   name     = "${var.env}-databases-internal-sg"
   
   ingress {
@@ -113,7 +113,7 @@ resource "aws_security_group" "internal_databases" {
     from_port   = 0
     to_port     = 65535
     protocol    = "tcp"
-    cidr_blocks = [var.vpc_cidr[var.env]]
+    cidr_blocks = ["10.0.0.0/16"]
   }
   
   egress {
