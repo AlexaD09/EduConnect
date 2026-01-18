@@ -1,18 +1,20 @@
 variable "env" {
-  type    = string
-  default = "qa"
+  description = "Environment (qa or prod)"
+  type        = string
+  default     = "qa"
 }
 
 variable "region" {
-  type    = string
-  default = "us-east-1"
+  description = "AWS region"
+  type        = string
+  default     = "us-east-1"
 }
 
 variable "microservices_ms_a" {
   type    = list(string)
   default = [
     "alexa1209/user-service",
-    "alexa1209/activity-service",
+    "alexa1209/activity-service", 
     "alexa1209/agreement-service",
     "alexa1209/approval-service",
     "alexa1209/audit-service"
@@ -24,7 +26,7 @@ variable "microservices_ms_b" {
   default = [
     "alexa1209/notification-service",
     "alexa1209/document-service",
-    "alexa1209/event-service",
+    "alexa1209/event-service", 
     "alexa1209/backup-service",
     "alexa1209/evidence-service"
   ]
@@ -41,27 +43,28 @@ variable "frontend_images" {
 }
 
 variable "instance_type" {
-  type    = string
-  default = "t3.micro"
+  description = "EC2 instance type"
+  type        = string
+  default     = "t3.micro"
 }
 
 variable "ami_id" {
-  type    = string
-  default = "ami-0c02fb55956c7d316" # Amazon Linux 2
+  description = "Amazon Linux 2 AMI"
+  type        = string
+  default     = "ami-0c02fb55956c7d316"
 }
 
-variable "vpc_cidr_qa" {
-  type    = string
-  default = "10.0.0.0/16"
-}
-
-variable "vpc_cidr_prod" {
-  type    = string
-  default = "10.10.0.0/16"
+variable "vpc_cidr" {
+  description = "VPC CIDR by environment"
+  type        = map(string)
+  default = {
+    qa   = "10.0.0.0/16"
+    prod = "10.1.0.0/16"
+  }
 }
 
 variable "admin_cidr" {
-  type    = string
-  default = "0.0.0.0/0" # Cambiar a tu IP real en producción
+  description = "Admin IP for Bastion access"
+  type        = string
+  default     = "0.0.0.0/0"
 }
-

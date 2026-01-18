@@ -1,47 +1,30 @@
-# VPCs QA
-resource "aws_vpc" "qa_frontend" {
+# Una VPC por cuenta, dinámica por ambiente
+resource "aws_vpc" "frontend" {
   provider   = aws.frontend
-  cidr_block = "10.0.0.0/16"
-  tags = { Name = "qa-frontend-vpc" }
+  cidr_block = var.vpc_cidr[var.env]
+  tags = { Name = "${var.env}-frontend-vpc" }
 }
 
-resource "aws_vpc" "qa_ms_a" {
+resource "aws_vpc" "ms_a" {
   provider   = aws.ms_a
-  cidr_block = "10.0.0.0/16" 
-  tags = { Name = "qa-ms-a-vpc" }
+  cidr_block = var.vpc_cidr[var.env]
+  tags = { Name = "${var.env}-ms-a-vpc" }
 }
 
-resource "aws_vpc" "qa_ms_b" {
+resource "aws_vpc" "ms_b" {
   provider   = aws.ms_b
-  cidr_block = "10.0.0.0/16"
-  tags = { Name = "qa-ms-b-vpc" }
+  cidr_block = var.vpc_cidr[var.env]
+  tags = { Name = "${var.env}-ms-b-vpc" }
 }
 
-resource "aws_vpc" "qa_databases" {
+resource "aws_vpc" "databases" {
   provider   = aws.databases
-  cidr_block = "10.0.0.0/16"
-  tags = { Name = "qa-databases-vpc" }
+  cidr_block = var.vpc_cidr[var.env]
+  tags = { Name = "${var.env}-databases-vpc" }
 }
 
-resource "aws_vpc" "qa_bastion" {
+resource "aws_vpc" "bastion" {
   provider   = aws.bastion
-  cidr_block = "10.0.0.0/16"
-  tags = { Name = "qa-bastion-vpc" }
+  cidr_block = var.vpc_cidr[var.env]
+  tags = { Name = "${var.env}-bastion-vpc" }
 }
-
-# VPCs PROD (comentadas para AWS Academy, pero listas para producción)
-/*
-resource "aws_vpc" "prod_frontend" {
-  provider   = aws.frontend
-  cidr_block = "10.1.0.0/16"
-  tags = { Name = "prod-frontend-vpc" }
-}
-
-resource "aws_vpc" "prod_ms_a" {
-  provider   = aws.ms_a
-  cidr_block = "10.1.0.0/16"
-  tags = { Name = "prod-ms-a-vpc" }
-}
-
-# ... resto de VPCs PROD
-*/
