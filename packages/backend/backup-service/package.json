@@ -1,0 +1,7 @@
+{
+  "name": "backup-service",
+  "scripts": {
+    "docker:build": "docker build -t alexa1209/backup-service:latest .",
+    "docker:push": "docker push alexa1209/backup-service:latest"
+  }
+}

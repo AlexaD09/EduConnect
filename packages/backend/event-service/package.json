@@ -1,0 +1,7 @@
+{
+  "name": "event-service",
+  "scripts": {
+    "docker:build": "docker build -t alexa1209/event-service:latest .",
+    "docker:push": "docker push alexa1209/event-service:latest"
+  }
+}
