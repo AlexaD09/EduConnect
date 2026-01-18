@@ -1,14 +1,15 @@
 {
-  "name": "academic-platform",
+  "name": "academic-linkage-platform",
   "private": true,
   "workspaces": [
-    "apps/*",
-    "frontend/*"
+    "packages/backend/*",
+    "apps/*"
   ],
   "devDependencies": {
-    "turbo": "^1.12.0"
+    "turbo": "^1.11.3"
   },
   "scripts": {
-    "build": "turbo run build"
+    "build": "turbo run build",
+    "dev": "turbo run dev"
   }
 }

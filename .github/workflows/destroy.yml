@@ -1,6 +1,12 @@
 name: Destroy Infrastructure
+
 on:
   workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to destroy (qa or prod)'
+        required: true
+        default: 'qa'
 
 jobs:
   destroy:
@@ -12,15 +18,13 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-access-key-id: ${{ secrets[format('AWS_{0}_ACCESS_KEY_ID', upper(github.event.inputs.environment))] }}
+          aws-secret-access-key: ${{ secrets[format('AWS_{0}_SECRET_ACCESS_KEY', upper(github.event.inputs.environment))] }}
+          aws-session-token: ${{ secrets[format('AWS_{0}_SESSION_TOKEN', upper(github.event.inputs.environment))] }}
           aws-region: us-east-1
 
       - name: Install Terraform
         uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.6.6
 
       - name: Terraform Init
         run: |
@@ -30,4 +34,4 @@ jobs:
       - name: Terraform Destroy
         run: |
           cd infra/terraform
-          terraform destroy -auto-approve
+          terraform destroy -var-file=environments/${{ github.event.inputs.environment }}.tfvars -auto-approve

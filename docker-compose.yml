@@ -172,6 +172,27 @@ services:
     networks:
     - app-network
 
+
+  audit-db:
+    image: postgres:15
+    environment:
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - ./backend/audit-service/database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - app-network
+
+  audit-service:
+    build: ./backend/audit-service
+    ports:
+      - "8006:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@audit-db:5432/bd_audit
+    depends_on:
+      - audit-db
+    networks:
+      - app-network 
+
 networks:
   app-network:
     driver: bridge
