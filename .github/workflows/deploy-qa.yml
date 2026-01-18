@@ -17,14 +17,10 @@ jobs:
       - name: Get changed packages
         id: changes
         run: |
-          # Obtener archivos modificados
           git diff --name-only HEAD~1 HEAD > changed_files.txt
-          
-          # Extraer nombres de paquetes backend que cambiaron
           changed_packages=""
           while read -r file; do
             if [[ $file == packages/backend/* ]]; then
-              # Extraer el nombre del microservicio (ej: packages/backend/user-service -> user-service)
               package=$(echo $file | cut -d'/' -f3)
               if [[ -n "$package" && "$package" != "backend" ]]; then
                 changed_packages="$changed_packages,$package"
@@ -32,12 +28,10 @@ jobs:
             fi
           done < changed_files.txt
           
-          # Limpiar y eliminar duplicados
           if [[ -n "$changed_packages" ]]; then
-            changed_packages=$(echo $changed_packages | sed 's/^,//' | tr ',' '\n' | sort -u | tr '\n' ',' | sed 's/,$//')
+            changed_packages=$(echo $changed_packages | sed 's/^,//' | tr ',' '\n' | sort -u | tr '\n' ',')
           fi
           
-          echo "Changed packages: $changed_packages"
           echo "changed_packages=$changed_packages" >> $GITHUB_OUTPUT
 
   # Step 2: Build and push Docker images for changed packages
@@ -45,10 +39,6 @@ jobs:
     needs: detect-changes
     runs-on: ubuntu-latest
     if: ${{ needs.detect-changes.outputs.changed_packages != '' }}
-    strategy:
-      matrix:
-        package: ${{ fromJson('["' + join(split(needs.detect-changes.outputs.changed_packages, ','), '","') + '"]') }}
-    
     steps:
       - uses: actions/checkout@v3
       
@@ -68,39 +58,130 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       
-      - name: Build and Push Docker Image
+      - name: Build and Push All Changed Images
         run: |
-          cd packages/backend/${{ matrix.package }}
-          docker build -t alexa1209/${{ matrix.package }}:latest .
-          docker push alexa1209/${{ matrix.package }}:latest
+          IFS=',' read -ra PACKAGES <<< "${{ needs.detect-changes.outputs.changed_packages }}"
+          for package in "${PACKAGES[@]}"; do
+            if [[ -n "$package" ]]; then
+              echo "Building $package"
+              cd packages/backend/$package
+              docker build -t alexa1209/$package:latest .
+              docker push alexa1209/$package:latest
+              cd ../../..
+            fi
+          done
 
-   # Setup and deploy infrastructure to AWS QA environment
-  deploy-aws:
+  # Setup and deploy infrastructure to AWS QA environment
+  deploy-aws-frontend:
     needs: [detect-changes, build-and-push-docker]
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        account: [frontend, ms_a, ms_b, databases, bastion]
-    
     steps:
       - uses: actions/checkout@v3
-      
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets[format('AWS_{0}_ACCESS_KEY_ID', upper(matrix.account))] }}
-          aws-secret-access-key: ${{ secrets[format('AWS_{0}_SECRET_ACCESS_KEY', upper(matrix.account))] }}
-          aws-session-token: ${{ secrets[format('AWS_{0}_SESSION_TOKEN', upper(matrix.account))] }}
+          aws-access-key-id: ${{ secrets.AWS_FRONTEND_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_FRONTEND_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_FRONTEND_SESSION_TOKEN }}
           aws-region: us-east-1
-
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
-
-      - name: Terraform Init 
+      - name: Terraform Init
         run: |
           cd infra/terraform
           terraform init
-      
+      - name: Terraform Apply
+        run: |
+          cd infra/terraform
+          terraform apply -var-file="qa.tfvars" -auto-approve
+
+  deploy-aws-ms-a:
+    needs: [detect-changes, build-and-push-docker]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_MS_A_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_MS_A_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_MS_A_SESSION_TOKEN }}
+          aws-region: us-east-1
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+      - name: Terraform Init
+        run: |
+          cd infra/terraform
+          terraform init
+      - name: Terraform Apply
+        run: |
+          cd infra/terraform
+          terraform apply -var-file="qa.tfvars" -auto-approve
+
+  deploy-aws-ms-b:
+    needs: [detect-changes, build-and-push-docker]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_MS_B_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_MS_B_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_MS_B_SESSION_TOKEN }}
+          aws-region: us-east-1
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+      - name: Terraform Init
+        run: |
+          cd infra/terraform
+          terraform init
+      - name: Terraform Apply
+        run: |
+          cd infra/terraform
+          terraform apply -var-file="qa.tfvars" -auto-approve
+
+  deploy-aws-databases:
+    needs: [detect-changes, build-and-push-docker]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_DATABASES_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_DATABASES_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_DATABASES_SESSION_TOKEN }}
+          aws-region: us-east-1
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+      - name: Terraform Init
+        run: |
+          cd infra/terraform
+          terraform init
+      - name: Terraform Apply
+        run: |
+          cd infra/terraform
+          terraform apply -var-file="qa.tfvars" -auto-approve
+
+  deploy-aws-bastion:
+    needs: [detect-changes, build-and-push-docker]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_BASTION_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_BASTION_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_BASTION_SESSION_TOKEN }}
+          aws-region: us-east-1
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+      - name: Terraform Init
+        run: |
+          cd infra/terraform
+          terraform init
       - name: Terraform Apply
         run: |
           cd infra/terraform
