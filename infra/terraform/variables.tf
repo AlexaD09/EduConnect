@@ -8,14 +8,6 @@ variable "region" {
   default = "us-east-1"
 }
 
-variable "aws_accounts" {
-  type = map(object({
-    access_key    = string
-    secret_key    = string
-    session_token = string
-  }))
-}
-
 variable "microservices_ms_a" {
   type    = list(string)
   default = [
