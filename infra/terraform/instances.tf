@@ -6,7 +6,7 @@ resource "aws_instance" "frontend_web" {
   instance_type = var.instance_type
   subnet_id = aws_subnet.frontend_public_a.id
   vpc_security_group_ids = [aws_security_group.frontend.id]
-  user_data = base64encode(<<EOF
+  user_data_base64 = base64encode(<<EOF
 #!/bin/bash
 yum update -y
 docker run -d -p 80:80 alexa1209/frontend-web:latest
@@ -21,7 +21,7 @@ resource "aws_instance" "frontend_mobile" {
   instance_type = var.instance_type
   subnet_id = aws_subnet.frontend_public_a.id
   vpc_security_group_ids = [aws_security_group.frontend.id]
-  user_data = base64encode(<<EOF
+  user_data_base64 = base64encode(<<EOF
 #!/bin/bash
 yum update -y
 docker run -d -p 3001:80 alexa1209/frontend-mobile:latest
@@ -36,7 +36,7 @@ resource "aws_instance" "frontend_desktop" {
   instance_type = var.instance_type
   subnet_id = aws_subnet.frontend_public_a.id
   vpc_security_group_ids = [aws_security_group.frontend.id]
-  user_data = base64encode(<<EOF
+  user_data_base64 = base64encode(<<EOF
 #!/bin/bash
 yum update -y
 docker run -d -p 3002:80 alexa1209/frontend-desktop:latest
@@ -51,7 +51,7 @@ resource "aws_instance" "api_gateway" {
   instance_type = var.instance_type
   subnet_id = aws_subnet.frontend_public_a.id
   vpc_security_group_ids = [aws_security_group.frontend.id]
-  user_data = base64encode(<<EOF
+  user_data_base64 = base64encode(<<EOF
 #!/bin/bash
 yum update -y
 docker run -d -p 8000:80 nginx
@@ -67,7 +67,7 @@ resource "aws_instance" "ms_a_user" {
   instance_type = var.instance_type
   subnet_id = aws_subnet.ms_a_private_a.id
   vpc_security_group_ids = [aws_security_group.internal.id]
-  user_data = base64encode(<<EOF
+  user_data_base64 = base64encode(<<EOF
 #!/bin/bash
 yum update -y
 docker run -d -p 8001:8000 alexa1209/user-service:latest
@@ -82,7 +82,7 @@ resource "aws_instance" "ms_a_activity" {
   instance_type = var.instance_type
   subnet_id = aws_subnet.ms_a_private_a.id
   vpc_security_group_ids = [aws_security_group.internal.id]
-  user_data = base64encode(<<EOF
+  user_data_base64 = base64encode(<<EOF
 #!/bin/bash
 yum update -y
 docker run -d -p 8002:8000 alexa1209/activity-service:latest
@@ -97,7 +97,7 @@ resource "aws_instance" "ms_a_agreement" {
   instance_type = var.instance_type
   subnet_id = aws_subnet.ms_a_private_a.id
   vpc_security_group_ids = [aws_security_group.internal.id]
-  user_data = base64encode(<<EOF
+  user_data_base64 = base64encode(<<EOF
 #!/bin/bash
 yum update -y
 docker run -d -p 8003:8000 alexa1209/agreement-service:latest
@@ -112,7 +112,7 @@ resource "aws_instance" "ms_a_approval" {
   instance_type = var.instance_type
   subnet_id = aws_subnet.ms_a_private_a.id
   vpc_security_group_ids = [aws_security_group.internal.id]
-  user_data = base64encode(<<EOF
+  user_data_base64 = base64encode(<<EOF
 #!/bin/bash
 yum update -y
 docker run -d -p 8004:8000 alexa1209/approval-service:latest
@@ -127,7 +127,7 @@ resource "aws_instance" "ms_a_audit" {
   instance_type = var.instance_type
   subnet_id = aws_subnet.ms_a_private_a.id
   vpc_security_group_ids = [aws_security_group.internal.id]
-  user_data = base64encode(<<EOF
+  user_data_base64 = base64encode(<<EOF
 #!/bin/bash
 yum update -y
 docker run -d -p 8007:8000 alexa1209/audit-service:latest
@@ -143,7 +143,7 @@ resource "aws_instance" "ms_b_notification" {
   instance_type = var.instance_type
   subnet_id = aws_subnet.ms_b_private_a.id
   vpc_security_group_ids = [aws_security_group.internal.id]
-  user_data = base64encode(<<EOF
+  user_data_base64 = base64encode(<<EOF
 #!/bin/bash
 yum update -y
 docker run -d -p 8005:8000 alexa1209/notification-service:latest
@@ -158,7 +158,7 @@ resource "aws_instance" "ms_b_document" {
   instance_type = var.instance_type
   subnet_id = aws_subnet.ms_b_private_a.id
   vpc_security_group_ids = [aws_security_group.internal.id]
-  user_data = base64encode(<<EOF
+  user_data_base64 = base64encode(<<EOF
 #!/bin/bash
 yum update -y
 docker run -d -p 8006:8000 alexa1209/document-service:latest
@@ -173,7 +173,7 @@ resource "aws_instance" "ms_b_event" {
   instance_type = var.instance_type
   subnet_id = aws_subnet.ms_b_private_a.id
   vpc_security_group_ids = [aws_security_group.internal.id]
-  user_data = base64encode(<<EOF
+  user_data_base64 = base64encode(<<EOF
 #!/bin/bash
 yum update -y
 docker run -d -p 8008:8000 alexa1209/event-service:latest
@@ -188,7 +188,7 @@ resource "aws_instance" "ms_b_backup" {
   instance_type = var.instance_type
   subnet_id = aws_subnet.ms_b_private_a.id
   vpc_security_group_ids = [aws_security_group.internal.id]
-  user_data = base64encode(<<EOF
+  user_data_base64 = base64encode(<<EOF
 #!/bin/bash
 yum update -y
 docker run -d -p 8009:8000 alexa1209/backup-service:latest
@@ -203,7 +203,7 @@ resource "aws_instance" "ms_b_evidence" {
   instance_type = var.instance_type
   subnet_id = aws_subnet.ms_b_private_a.id
   vpc_security_group_ids = [aws_security_group.internal.id]
-  user_data = base64encode(<<EOF
+  user_data_base64 = base64encode(<<EOF
 #!/bin/bash
 yum update -y
 docker run -d -p 8010:8000 alexa1209/evidence-service:latest
@@ -219,7 +219,7 @@ resource "aws_instance" "postgres" {
   instance_type = var.instance_type
   subnet_id = aws_subnet.databases_private_a.id
   vpc_security_group_ids = [aws_security_group.internal.id]
-  user_data = base64encode(<<EOF
+  user_data_base64 = base64encode(<<EOF
 #!/bin/bash
 yum update -y
 docker run -d -p 5432:5432 -e POSTGRES_PASSWORD=postgres postgres:15
@@ -234,7 +234,7 @@ resource "aws_instance" "redis" {
   instance_type = var.instance_type
   subnet_id = aws_subnet.databases_private_a.id
   vpc_security_group_ids = [aws_security_group.internal.id]
-  user_data = base64encode(<<EOF
+  user_data_base64 = base64encode(<<EOF
 #!/bin/bash
 yum update -y
 docker run -d -p 6379:6379 redis:7
@@ -249,7 +249,7 @@ resource "aws_instance" "kafka" {
   instance_type = var.instance_type
   subnet_id = aws_subnet.databases_private_a.id
   vpc_security_group_ids = [aws_security_group.internal.id]
-  user_data = base64encode(<<EOF
+  user_data_base64 = base64encode(<<EOF
 #!/bin/bash
 yum update -y
 docker run -d -p 9092:9092 apache/kafka:3.7.1

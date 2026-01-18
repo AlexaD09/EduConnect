@@ -7,8 +7,8 @@ resource "aws_autoscaling_group" "frontend_web" {
   min_size             = 1
   desired_capacity     = 1
   vpc_zone_identifier  = [
-    aws_subnet.qa_frontend_public_a.id,
-    aws_subnet.qa_frontend_public_b.id
+    aws_subnet.frontend_public_a.id,
+    aws_subnet.frontend_public_b.id
   ]
   target_group_arns    = var.env == "prod" ? [aws_lb_target_group.frontend[0].arn] : []
   launch_template {

@@ -7,8 +7,8 @@ resource "aws_lb" "frontend" {
   load_balancer_type  = "application"
   security_groups     = [aws_security_group.frontend.id]
   subnets             = [
-    aws_subnet.qa_frontend_public_a.id,
-    aws_subnet.qa_frontend_public_b.id
+    aws_subnet.frontend_public_a.id,
+    aws_subnet.frontend_public_b.id
   ]
 }
 
