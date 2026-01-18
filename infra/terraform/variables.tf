@@ -4,6 +4,13 @@ variable "env" {
   default     = "qa"
 }
 
+variable "use_default_vpc" {
+  description = "Use default VPC (for AWS Academy)"
+  type        = bool
+  default     = true
+}
+
+
 variable "region" {
   description = "AWS region"
   type        = string

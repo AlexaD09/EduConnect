@@ -1,9 +1,39 @@
-# Security Group Frontend
+# Security Group Bastion - solo permite tu IP
+resource "aws_security_group" "bastion" {
+  count    = 1
+  provider = aws.bastion
+  name     = "${var.env}-bastion-sg"
+  
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = [var.admin_cidr]  # Solo tu IP puede acceder
+  }
+  
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+# Security Group Frontend - aislado por ambiente
 resource "aws_security_group" "frontend" {
+  count    = 1
   provider = aws.frontend
-  # vpc_id REMOVIDO - usa VPC por defecto
   name     = "${var.env}-frontend-sg"
   
+  # SSH solo desde Bastion del mismo ambiente
+  ingress {
+    from_port       = 22
+    to_port         = 22
+    protocol        = "tcp"
+    cidr_blocks     = [var.admin_cidr]  # Solo tu IP
+  }
+  
+  # HTTP público
   ingress {
     from_port   = 80
     to_port     = 80
@@ -19,12 +49,13 @@ resource "aws_security_group" "frontend" {
   }
 }
 
-# Security Group Bastion
-resource "aws_security_group" "bastion" {
-  provider = aws.bastion
-  # vpc_id REMOVIDO
-  name     = "${var.env}-bastion-sg"
+# Security Group Internal - aislado por ambiente
+resource "aws_security_group" "internal" {
+  count    = 1
+  provider = aws.ms_a  # Se replica en otras cuentas
+  name     = "${var.env}-internal-sg"
   
+  # SSH solo desde tu IP
   ingress {
     from_port   = 22
     to_port     = 22
@@ -32,88 +63,12 @@ resource "aws_security_group" "bastion" {
     cidr_blocks = [var.admin_cidr]
   }
   
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-}
-
-# Security Group Internal MS-A
-resource "aws_security_group" "internal_ms_a" {
-  provider = aws.ms_a
-  # vpc_id REMOVIDO
-  name     = "${var.env}-ms-a-internal-sg"
-  
-  ingress {
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = [var.admin_cidr]
-  }
-  
+  # Comunication  interna
   ingress {
     from_port   = 0
     to_port     = 65535
     protocol    = "tcp"
-    cidr_blocks = ["10.0.0.0/16"]  # Ajusta según necesidad
-  }
-  
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-}
-
-# Security Group Internal MS-B
-resource "aws_security_group" "internal_ms_b" {
-  provider = aws.ms_b
-  # vpc_id REMOVIDO
-  name     = "${var.env}-ms-b-internal-sg"
-  
-  ingress {
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = [var.admin_cidr]
-  }
-  
-  ingress {
-    from_port   = 0
-    to_port     = 65535
-    protocol    = "tcp"
-    cidr_blocks = ["10.0.0.0/16"]
-  }
-  
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-}
-
-# Security Group Internal Databases
-resource "aws_security_group" "internal_databases" {
-  provider = aws.databases
-  # vpc_id REMOVIDO
-  name     = "${var.env}-databases-internal-sg"
-  
-  ingress {
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = [var.admin_cidr]
-  }
-  
-  ingress {
-    from_port   = 0
-    to_port     = 65535
-    protocol    = "tcp"
-    cidr_blocks = ["10.0.0.0/16"]
+    cidr_blocks = ["172.31.0.0/16"]  #default vcp
   }
   
   egress {

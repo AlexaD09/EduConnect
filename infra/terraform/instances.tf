@@ -1,4 +1,24 @@
 ##############################################
+# BASTION HOST con IP estática
+##############################################
+
+resource "aws_eip" "bastion" {
+  count   = var.env == "qa" || var.env == "prod" ? 1 : 0
+  domain  = "vpc"
+  tags = { Name = "${var.env}-bastion-eip" }
+}
+
+resource "aws_instance" "bastion" {
+  count    = var.env == "qa" || var.env == "prod" ? 1 : 0
+  provider = aws.bastion
+  ami      = var.ami_id
+  instance_type = "t3.micro"
+  vpc_security_group_ids = [aws_security_group.bastion[0].id]
+  associate_public_ip_address = true
+  tags = { Name = "${var.env}-bastion" }
+}
+
+##############################################
 # FRONTEND
 ##############################################
 
@@ -7,8 +27,7 @@ resource "aws_instance" "frontend_web" {
   provider = aws.frontend
   ami      = var.ami_id
   instance_type = var.instance_type
-  # subnet_id REMOVIDO - usa subnet por defecto
-  vpc_security_group_ids = [aws_security_group.frontend.id]
+  vpc_security_group_ids = [aws_security_group.frontend[0].id]
 
   user_data_base64 = base64encode(<<EOF
 #!/bin/bash
@@ -28,8 +47,7 @@ resource "aws_instance" "frontend_mobile" {
   provider = aws.frontend
   ami      = var.ami_id
   instance_type = var.instance_type
-  # subnet_id REMOVIDO
-  vpc_security_group_ids = [aws_security_group.frontend.id]
+  vpc_security_group_ids = [aws_security_group.frontend[0].id]
 
   user_data_base64 = base64encode(<<EOF
 #!/bin/bash
@@ -49,8 +67,7 @@ resource "aws_instance" "frontend_desktop" {
   provider = aws.frontend
   ami      = var.ami_id
   instance_type = var.instance_type
-  # subnet_id REMOVIDO
-  vpc_security_group_ids = [aws_security_group.frontend.id]
+  vpc_security_group_ids = [aws_security_group.frontend[0].id]
 
   user_data_base64 = base64encode(<<EOF
 #!/bin/bash
@@ -70,8 +87,7 @@ resource "aws_instance" "api_gateway" {
   provider = aws.frontend
   ami      = var.ami_id
   instance_type = var.instance_type
-  # subnet_id REMOVIDO
-  vpc_security_group_ids = [aws_security_group.frontend.id]
+  vpc_security_group_ids = [aws_security_group.frontend[0].id]
 
   user_data_base64 = base64encode(<<EOF
 #!/bin/bash
@@ -95,8 +111,7 @@ resource "aws_instance" "user_service" {
   provider = aws.ms_a
   ami      = var.ami_id
   instance_type = var.instance_type
-  # subnet_id REMOVIDO
-  vpc_security_group_ids = [aws_security_group.internal_ms_a.id]
+  vpc_security_group_ids = [aws_security_group.internal_ms_a[0].id]
 
   user_data_base64 = base64encode(<<EOF
 #!/bin/bash
@@ -116,8 +131,7 @@ resource "aws_instance" "activity_service" {
   provider = aws.ms_a
   ami      = var.ami_id
   instance_type = var.instance_type
-  # subnet_id REMOVIDO
-  vpc_security_group_ids = [aws_security_group.internal_ms_a.id]
+  vpc_security_group_ids = [aws_security_group.internal_ms_a[0].id]
 
   user_data_base64 = base64encode(<<EOF
 #!/bin/bash
@@ -137,8 +151,7 @@ resource "aws_instance" "agreement_service" {
   provider = aws.ms_a
   ami      = var.ami_id
   instance_type = var.instance_type
-  # subnet_id REMOVIDO
-  vpc_security_group_ids = [aws_security_group.internal_ms_a.id]
+  vpc_security_group_ids = [aws_security_group.internal_ms_a[0].id]
 
   user_data_base64 = base64encode(<<EOF
 #!/bin/bash
@@ -158,8 +171,7 @@ resource "aws_instance" "approval_service" {
   provider = aws.ms_a
   ami      = var.ami_id
   instance_type = var.instance_type
-  # subnet_id REMOVIDO
-  vpc_security_group_ids = [aws_security_group.internal_ms_a.id]
+  vpc_security_group_ids = [aws_security_group.internal_ms_a[0].id]
 
   user_data_base64 = base64encode(<<EOF
 #!/bin/bash
@@ -179,8 +191,7 @@ resource "aws_instance" "audit_service" {
   provider = aws.ms_a
   ami      = var.ami_id
   instance_type = var.instance_type
-  # subnet_id REMOVIDO
-  vpc_security_group_ids = [aws_security_group.internal_ms_a.id]
+  vpc_security_group_ids = [aws_security_group.internal_ms_a[0].id]
 
   user_data_base64 = base64encode(<<EOF
 #!/bin/bash
@@ -204,8 +215,7 @@ resource "aws_instance" "notification_service" {
   provider = aws.ms_b
   ami      = var.ami_id
   instance_type = var.instance_type
-  # subnet_id REMOVIDO
-  vpc_security_group_ids = [aws_security_group.internal_ms_b.id]
+  vpc_security_group_ids = [aws_security_group.internal_ms_b[0].id]
 
   user_data_base64 = base64encode(<<EOF
 #!/bin/bash
@@ -225,8 +235,7 @@ resource "aws_instance" "document_service" {
   provider = aws.ms_b
   ami      = var.ami_id
   instance_type = var.instance_type
-  # subnet_id REMOVIDO
-  vpc_security_group_ids = [aws_security_group.internal_ms_b.id]
+  vpc_security_group_ids = [aws_security_group.internal_ms_b[0].id]
 
   user_data_base64 = base64encode(<<EOF
 #!/bin/bash
@@ -246,8 +255,7 @@ resource "aws_instance" "event_service" {
   provider = aws.ms_b
   ami      = var.ami_id
   instance_type = var.instance_type
-  # subnet_id REMOVIDO
-  vpc_security_group_ids = [aws_security_group.internal_ms_b.id]
+  vpc_security_group_ids = [aws_security_group.internal_ms_b[0].id]
 
   user_data_base64 = base64encode(<<EOF
 #!/bin/bash
@@ -267,8 +275,7 @@ resource "aws_instance" "backup_service" {
   provider = aws.ms_b
   ami      = var.ami_id
   instance_type = var.instance_type
-  # subnet_id REMOVIDO
-  vpc_security_group_ids = [aws_security_group.internal_ms_b.id]
+  vpc_security_group_ids = [aws_security_group.internal_ms_b[0].id]
 
   user_data_base64 = base64encode(<<EOF
 #!/bin/bash
@@ -288,8 +295,7 @@ resource "aws_instance" "evidence_service" {
   provider = aws.ms_b
   ami      = var.ami_id
   instance_type = var.instance_type
-  # subnet_id REMOVIDO
-  vpc_security_group_ids = [aws_security_group.internal_ms_b.id]
+  vpc_security_group_ids = [aws_security_group.internal_ms_b[0].id]
 
   user_data_base64 = base64encode(<<EOF
 #!/bin/bash
@@ -313,8 +319,7 @@ resource "aws_instance" "postgres" {
   provider = aws.databases
   ami      = var.ami_id
   instance_type = var.instance_type
-  # subnet_id REMOVIDO
-  vpc_security_group_ids = [aws_security_group.internal_databases.id]
+  vpc_security_group_ids = [aws_security_group.internal_databases[0].id]
 
   user_data_base64 = base64encode(<<EOF
 #!/bin/bash
@@ -334,8 +339,7 @@ resource "aws_instance" "redis" {
   provider = aws.databases
   ami      = var.ami_id
   instance_type = var.instance_type
-  # subnet_id REMOVIDO
-  vpc_security_group_ids = [aws_security_group.internal_databases.id]
+  vpc_security_group_ids = [aws_security_group.internal_databases[0].id]
 
   user_data_base64 = base64encode(<<EOF
 #!/bin/bash
@@ -355,8 +359,7 @@ resource "aws_instance" "kafka" {
   provider = aws.databases
   ami      = var.ami_id
   instance_type = var.instance_type
-  # subnet_id REMOVIDO
-  vpc_security_group_ids = [aws_security_group.internal_databases.id]
+  vpc_security_group_ids = [aws_security_group.internal_databases[0].id]
 
   user_data_base64 = base64encode(<<EOF
 #!/bin/bash
@@ -369,18 +372,4 @@ EOF
   )
 
   tags = { Name = "${var.env}-kafka" }
-}
-
-##############################################
-# BASTION HOST
-##############################################
-
-resource "aws_instance" "bastion" {
-  count    = var.env == "qa" || var.env == "prod" ? 1 : 0
-  provider = aws.bastion
-  ami      = var.ami_id
-  instance_type = "t3.micro"
-  # subnet_id REMOVIDO
-  vpc_security_group_ids = [aws_security_group.bastion.id]
-  tags = { Name = "${var.env}-bastion" }
 }
