@@ -1,118 +1,27 @@
-name: Deploy QA Infrastructure
+name: Deploy Infrastructure
 on:
   push:
-    branches: [ features ]
+    branches: [features]
 
 jobs:
-  # Step 1: Create infrastructure in QA environment
-  create-infrastructure:
+  deploy:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        account: [frontend, ms_a, ms_b, databases, bastion]
-    
     steps:
       - uses: actions/checkout@v3
-      
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets[format('AWS_{0}_ACCESS_KEY_ID', matrix.account)] }}
-          aws-secret-access-key: ${{ secrets[format('AWS_{0}_SECRET_ACCESS_KEY', matrix.account)] }}
-          aws-session-token: ${{ secrets[format('AWS_{0}_SESSION_TOKEN', matrix.account)] }}
+          aws-access-key-id: ${{ secrets.AWS_FRONTEND_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_FRONTEND_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_FRONTEND_SESSION_TOKEN }}
           aws-region: us-east-1
-      
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
-      
       - name: Terraform Init
         run: |
           cd infra/terraform
           terraform init
-      
       - name: Terraform Apply
         run: |
           cd infra/terraform
-          terraform apply -var-file="qa.tfvars" -auto-approve
-
-  # Step 2: Build and Push Docker Images
-  build-and-push-docker:
-    needs: create-infrastructure
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-      
-      - name: Install dependencies
-        run: |
-          npm install -g turbo
-          npm install
-      
-      - name: Login to Docker Hub
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-      
-      - name: Build and Push All Backend Images
-        run: |
-          # Construir todos los microservicios
-          for service in user-service activity-service agreement-service approval-service audit-service notification-service document-service event-service backup-service evidence-service; do
-            if [ -d "packages/backend/$service" ]; then
-              echo "Building $service"
-              cd packages/backend/$service
-              docker build -t alexa1209/$service:latest .
-              docker push alexa1209/$service:latest 
-              cd ../../..
-            fi
-          done
-      
-      - name: Build and Push Frontend Images
-        run: |
-          # Construir frontend
-          for app in web mobile desktop; do
-            if [ -d "packages/frontend/$app" ]; then
-              echo "Building frontend-$app"
-              cd packages/frontend/$app
-              docker build -t alexa1209/frontend-$app:latest .
-              docker push alexa1209/frontend-$app:latest
-              cd ../../..
-            fi
-          done
-
-  # Step 3: Update Services with New Images
-  update-services:
-    needs: build-and-push-docker
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        account: [frontend, ms_a, ms_b, databases, bastion]
-    
-    steps:
-      - uses: actions/checkout@v3
-      
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets[format('AWS_{0}_ACCESS_KEY_ID', matrix.account)] }}
-          aws-secret-access-key: ${{ secrets[format('AWS_{0}_SECRET_ACCESS_KEY', matrix.account)] }}
-          aws-session-token: ${{ secrets[format('AWS_{0}_SESSION_TOKEN', matrix.account)] }}
-          aws-region: us-east-1
-      
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
-      
-      - name: Terraform Init
-        run: |
-          cd infra/terraform
-          terraform init
-      
-      - name: Terraform Apply (Update)
-        run: |
-          cd infra/terraform
-          # Forzar actualización con timestamp
-          terraform apply -var-file="qa.tfvars" -auto-approve
+          terraform apply -var-file=qa.tfvars -auto-approve
