@@ -111,7 +111,8 @@ jobs:
           cd infra/terraform
           terraform init
       
-      - name: Terraform Apply
+      - name: Terraform Apply (Update)
         run: |
-             cd infra/terraform
-             terraform apply -var-file="environments/qa.tfvars" -auto-approve
+          cd infra/terraform
+          # Forzar actualización con timestamp
+          terraform apply -var-file="qa.tfvars" -auto-approve
