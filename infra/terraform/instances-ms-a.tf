@@ -81,4 +81,4 @@ docker run -d -p 8007:8000 alexa1209/audit-service:latest
 EOF
   )
   tags = { Name = "${var.env}-audit-service" }
-}
+} 
