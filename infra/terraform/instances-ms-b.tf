@@ -81,4 +81,4 @@ docker run -d -p 8010:8000 alexa1209/evidence-service:latest
 EOF
   )
   tags = { Name = "${var.env}-evidence-service" }
-} 
+}  
