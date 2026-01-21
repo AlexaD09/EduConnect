@@ -1,7 +1,13 @@
 output "environment" {
-  value = var.env
+  value = var.environment
 }
 
-output "instance_count" {
-  value = var.env == "qa" ? 1 : 0
+output "bastion_ip" {
+  value = module.bastion.public_ip
 }
+
+
+output "bastion_eip" {
+  value = aws_eip.bastion_eip.public_ip
+}
+

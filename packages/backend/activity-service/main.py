@@ -37,7 +37,7 @@ async def register_activity(
         entry_path = save_file(entry_photo.file, entry_filename)
         exit_path = save_file(exit_photo.file, exit_filename)
         
-        # ✅ Create the activity
+        
         new_activity = create_activity(
             db,
             student_id,
@@ -125,7 +125,7 @@ def update_activity_status(
     if "status" in status_update:
         activity.status = status_update["status"]
     
-    # Update observations if provided
+    
     if "observations" in status_update:
         activity.observations = status_update["observations"]
     

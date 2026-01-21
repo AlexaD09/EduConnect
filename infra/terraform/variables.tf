@@ -1,29 +1,111 @@
-variable "env" {
-  description = "Environment (qa or prod)"
+
+variable "environment" {
+  description = "Deployment environment"
   type        = string
-  default     = "qa"
+  validation {
+    condition     = contains(["qa", "prod"], var.environment)
+    error_message = "environment must be qa or prod"
+  }
 }
+
 
 variable "region" {
-  description = "AWS region"
-  type        = string
-  default     = "us-east-1"
+  type = string
 }
 
-variable "ami_id" {
-  description = "Amazon Linux 2 AMI"
-  type        = string
-  default     = "ami-0c02fb55956c7d316"
+variable "availability_zones" {
+  type = list(string)
 }
 
-variable "instance_type" {
-  description = "EC2 instance type"
-  type        = string
-  default     = "t3.micro"
+
+
+variable "cidr_frontend" {
+  type = string
 }
 
-variable "admin_cidr" {
-  description = "Admin IP for Bastion access"
+variable "cidr_ms_a" {
+  type = string
+}
+
+variable "cidr_ms_b" {
+  type = string
+}
+
+variable "cidr_data" {
+  type = string
+}
+
+variable "cidr_bastion" {
+  type = string
+}
+
+
+
+variable "frontend_access_key" {
+  type = string
+}
+variable "frontend_secret_key" {
+  type = string
+}
+
+variable "ms_a_access_key" {
+  type = string
+}
+variable "ms_a_secret_key" {
+  type = string
+}
+
+variable "ms_b_access_key" {
+  type = string
+}
+variable "ms_b_secret_key" {
+  type = string
+}
+
+variable "data_access_key" {
+  type = string
+}
+variable "data_secret_key" {
+  type = string
+}
+
+variable "bastion_access_key" {
+  type = string
+}
+variable "bastion_secret_key" {
+  type = string
+}
+
+
+
+variable "frontend_session_token" {
+  type = string
+}
+
+variable "ms_a_session_token" {
+  type = string
+}
+
+variable "ms_b_session_token" {
+  type = string
+}
+
+variable "data_session_token" {
+  type = string
+}
+
+variable "bastion_session_token" {
+  type = string
+}
+
+
+variable "key_name" {
+  type = string
+  default     = "prueba"
+}
+
+variable "allowed_ssh_cidr" {
   type        = string
-  default     = "45.236.107.170/32"
+  description = "CIDR range allowed for SSH to bastion"
+  default     = "0.0.0.0/0"  # o el rango que quieras
 }
