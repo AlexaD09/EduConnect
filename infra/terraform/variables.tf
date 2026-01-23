@@ -17,6 +17,11 @@ variable "availability_zones" {
   type = list(string)
 }
 
+variable "bastion_eip_allocation_id" {
+  type = string
+}
+
+
 
 
 variable "cidr_frontend" {

@@ -1,4 +1,3 @@
-// frontend/web/src/services/activity-service.js
 const API_GATEWAY_URL = import.meta.env.VITE_API_GATEWAY_URL;
 
 

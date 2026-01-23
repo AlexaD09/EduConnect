@@ -1,22 +1,31 @@
 import pytest
 from unittest.mock import MagicMock
-import services.activity_service as service
 
-def test_activity_without_assignment(monkeypatch):
-    """Objetivo: No permitir actividad sin asignación"""
-    monkeypatch.setattr(service, "get_assignment", lambda x: {"has_assignment": False})
+from app.application.commands.create_activity import CreateActivityCommand
+
+
+def test_activity_without_assignment():
+   
+    activity_repo = MagicMock()
+    assignment_gateway = MagicMock()
+    assignment_gateway.get_assignment.return_value = {"has_assignment": False}
+    storage = MagicMock()
+
+    cmd = CreateActivityCommand(activity_repo, assignment_gateway, storage)
 
     with pytest.raises(ValueError):
-        service.create_activity(MagicMock(), 1, "desc", "a.jpg", "b.jpg")
+        cmd.execute(1, "desc", MagicMock(), MagicMock())
 
 
-def test_activity_created(monkeypatch):
-    """Objetivo: Crear actividad correctamente"""
-    monkeypatch.setattr(service, "get_assignment", lambda x: {"has_assignment": True, "agreement_id": 2})
+def test_activity_created():
+    
+    activity_repo = MagicMock()
+    assignment_gateway = MagicMock()
+    assignment_gateway.get_assignment.return_value = {"has_assignment": True, "agreement_id": 2}
+    storage = MagicMock()
+    storage.save.side_effect = ["/storage/a.jpg", "/storage/b.jpg"]
 
-    db = MagicMock()
-    activity = service.create_activity(db, 1, "desc", "a.jpg", "b.jpg")
+    cmd = CreateActivityCommand(activity_repo, assignment_gateway, storage)
+    cmd.execute(1, "desc", MagicMock(), MagicMock())
 
-    assert activity is not None
-    db.add.assert_called_once()
-    db.commit.assert_called_once()
+    activity_repo.create.assert_called_once()

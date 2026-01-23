@@ -1,67 +1,75 @@
 .login-container {
   min-height: 100vh;
   display: flex;
-  align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #0d6efd, #6610f2);
-  padding: 20px;
+  align-items: center;
+  background: linear-gradient(135deg, #020f2a, #041a3d);
 }
 
 .login-card {
   width: 100%;
-  max-width: 380px;
+  max-width: 420px;
   background: #ffffff;
-  border-radius: 14px;
-  border: none;
-  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
-  animation: fadeIn 0.5s ease-in-out;
+  border-radius: 16px;
+  padding: 0;
+  overflow: hidden;
+  position: relative;
+  z-index: 2;
+}
+
+.login-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: url("/assets/login-header.jpg") center / cover no-repeat;
+  height: 140px;
+  z-index: 1;
 }
 
 .login-card h3 {
-  font-weight: 600;
-  color: #333;
+  position: relative;
+  z-index: 2;
+  margin-top: 160px;
+  margin-bottom: 20px;
+  text-align: center;
+  font-weight: 700;
+  color: #0a1f44;
 }
 
 .login-card input {
-  border-radius: 8px;
-  padding: 10px 12px;
+  position: relative;
+  z-index: 2;
+  height: 46px;
+  border-radius: 30px;
+  border: 1px solid #dcdcdc;
+  padding: 0 18px;
   font-size: 14px;
-  border: 1px solid #ced4da;
-  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .login-card input:focus {
-  border-color: #0d6efd;
-  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
   outline: none;
+  border-color: #0a2c66;
+  box-shadow: 0 0 0 2px rgba(10, 44, 102, 0.15);
 }
 
 .login-card button {
-  border-radius: 8px;
-  padding: 10px;
-  font-weight: 600;
-  background: #0d6efd;
+  position: relative;
+  z-index: 2;
+  height: 46px;
+  border-radius: 30px;
+  background: linear-gradient(135deg, #0a2c66, #031530);
   border: none;
-  transition: background 0.2s, transform 0.1s;
+  font-weight: 600;
+  letter-spacing: 0.5px;
 }
 
 .login-card button:hover {
-  background: #0b5ed7;
-  transform: translateY(-1px);
+  background: linear-gradient(135deg, #031530, #0a2c66);
 }
 
 .login-card p {
+  position: relative;
+  z-index: 2;
   font-size: 14px;
-  font-weight: 500;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(15px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  color: #c62828;
 }

@@ -12,5 +12,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# RNF8: Run batch seeding + FastAPI
-CMD ["sh", "-c", "python batch.py && python batch_agreement.py && uvicorn main:app --host 0.0.0.0 --port 8000"]
+CMD ["sh", "-c", "python -m app.adapters.batch.batch_students && python -m app.adapters.batch.batch_agreements && uvicorn main:app --host 0.0.0.0 --port 8000"]

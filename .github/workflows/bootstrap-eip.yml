@@ -1,0 +1,38 @@
+name: Bootstrap - Bastion EIP (one time per env)
+
+on:
+  workflow_dispatch:
+    inputs:
+      env:
+        description: "qa o prod"
+        required: true
+        default: "qa"
+
+jobs:
+  eip:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (bastion account)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_BASTION_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_BASTION_SECRET_ACCESS_KEY }}
+          aws-session-token:     ${{ secrets.AWS_BASTION_SESSION_TOKEN }}
+          aws-region: us-east-1
+
+      - name: Terraform apply (EIP)
+        working-directory: infra/terraform-eip
+        run: |
+          terraform init -input=false
+
+          TFV="/tmp/eip.tfvars"
+          echo "environment = \"${{ inputs.env }}\"" > "$TFV"
+          echo "region      = \"us-east-1\"" >> "$TFV"
+          echo "bastion_access_key    = \"${{ secrets.AWS_BASTION_ACCESS_KEY_ID }}\"" >> "$TFV"
+          echo "bastion_secret_key    = \"${{ secrets.AWS_BASTION_SECRET_ACCESS_KEY }}\"" >> "$TFV"
+          echo "bastion_session_token = \"${{ secrets.AWS_BASTION_SESSION_TOKEN }}\"" >> "$TFV"
+
+          terraform apply -var-file="$TFV" -auto-approve
+          terraform output

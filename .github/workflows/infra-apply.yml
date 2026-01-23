@@ -1,0 +1,123 @@
+name: Infra Apply (QA/PROD by branch)
+
+on:
+  push:
+    branches: [ features, qa, main ]
+
+concurrency:
+  group: infra-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  set-env:
+    runs-on: ubuntu-latest
+    outputs:
+      env: ${{ steps.env.outputs.env }}
+      backend: ${{ steps.env.outputs.backend }}
+    steps:
+      - id: env
+        run: |
+          BRANCH="${GITHUB_REF_NAME}"
+          if [ "$BRANCH" = "main" ]; then
+            echo "env=prod" >> $GITHUB_OUTPUT
+            echo "backend=backend-prod.hcl" >> $GITHUB_OUTPUT
+          else
+            echo "env=qa" >> $GITHUB_OUTPUT
+            echo "backend=backend-qa.hcl" >> $GITHUB_OUTPUT
+          fi
+
+  apply:
+    needs: set-env
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Credenciales bucket state (solo para leer/escribir state)
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_STATE_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_STATE_SECRET_ACCESS_KEY }}
+          aws-session-token:     ${{ secrets.AWS_STATE_SESSION_TOKEN }}
+          aws-region: us-east-1
+
+      - name: Build tfvars (base file + secrets override)
+        working-directory: infra/terraform
+        run: |
+          ENV="${{ needs.set-env.outputs.env }}"
+
+          if [ "$ENV" = "prod" ]; then
+            cp prod.tfvars /tmp/env.tfvars
+            EIPALLOC="${{ secrets.BASTION_EIPALLOC_PROD }}"
+            FRONT_AK="${{ secrets.AWS_FRONTEND_ACCESS_KEY_ID_PROD }}"
+            FRONT_SK="${{ secrets.AWS_FRONTEND_SECRET_ACCESS_KEY_PROD }}"
+            FRONT_TK="${{ secrets.AWS_FRONTEND_SESSION_TOKEN_PROD }}"
+            MSA_AK="${{ secrets.AWS_MSA_ACCESS_KEY_ID_PROD }}"
+            MSA_SK="${{ secrets.AWS_MSA_SECRET_ACCESS_KEY_PROD }}"
+            MSA_TK="${{ secrets.AWS_MSA_SESSION_TOKEN_PROD }}"
+            MSB_AK="${{ secrets.AWS_MSB_ACCESS_KEY_ID_PROD }}"
+            MSB_SK="${{ secrets.AWS_MSB_SECRET_ACCESS_KEY_PROD }}"
+            MSB_TK="${{ secrets.AWS_MSB_SESSION_TOKEN_PROD }}"
+            DATA_AK="${{ secrets.AWS_DATA_ACCESS_KEY_ID_PROD }}"
+            DATA_SK="${{ secrets.AWS_DATA_SECRET_ACCESS_KEY_PROD }}"
+            DATA_TK="${{ secrets.AWS_DATA_SESSION_TOKEN_PROD }}"
+            BAS_AK="${{ secrets.AWS_BASTION_ACCESS_KEY_ID_PROD }}"
+            BAS_SK="${{ secrets.AWS_BASTION_SECRET_ACCESS_KEY_PROD }}"
+            BAS_TK="${{ secrets.AWS_BASTION_SESSION_TOKEN_PROD }}"
+          else
+            cp qa.tfvars /tmp/env.tfvars
+            EIPALLOC="${{ secrets.BASTION_EIPALLOC_QA }}"
+            FRONT_AK="${{ secrets.AWS_FRONTEND_ACCESS_KEY_ID_QA }}"
+            FRONT_SK="${{ secrets.AWS_FRONTEND_SECRET_ACCESS_KEY_QA }}"
+            FRONT_TK="${{ secrets.AWS_FRONTEND_SESSION_TOKEN_QA }}"
+            MSA_AK="${{ secrets.AWS_MSA_ACCESS_KEY_ID_QA }}"
+            MSA_SK="${{ secrets.AWS_MSA_SECRET_ACCESS_KEY_QA }}"
+            MSA_TK="${{ secrets.AWS_MSA_SESSION_TOKEN_QA }}"
+            MSB_AK="${{ secrets.AWS_MSB_ACCESS_KEY_ID_QA }}"
+            MSB_SK="${{ secrets.AWS_MSB_SECRET_ACCESS_KEY_QA }}"
+            MSB_TK="${{ secrets.AWS_MSB_SESSION_TOKEN_QA }}"
+            DATA_AK="${{ secrets.AWS_DATA_ACCESS_KEY_ID_QA }}"
+            DATA_SK="${{ secrets.AWS_DATA_SECRET_ACCESS_KEY_QA }}"
+            DATA_TK="${{ secrets.AWS_DATA_SESSION_TOKEN_QA }}"
+            BAS_AK="${{ secrets.AWS_BASTION_ACCESS_KEY_ID_QA }}"
+            BAS_SK="${{ secrets.AWS_BASTION_SECRET_ACCESS_KEY_QA }}"
+            BAS_TK="${{ secrets.AWS_BASTION_SESSION_TOKEN_QA }}"
+          fi
+
+          # eliminar credenciales existentes del archivo (las tuyas están hardcodeadas ahora)
+          sed -i '/_access_key/d;/_secret_key/d;/_session_token/d;/bastion_eip_allocation_id/d' /tmp/env.tfvars
+
+          # reinsertar desde secrets
+          cat >> /tmp/env.tfvars <<EOF
+          bastion_eip_allocation_id = "$EIPALLOC"
+
+          frontend_access_key = "$FRONT_AK"
+          frontend_secret_key = "$FRONT_SK"
+          frontend_session_token = "$FRONT_TK"
+
+          ms_a_access_key = "$MSA_AK"
+          ms_a_secret_key = "$MSA_SK"
+          ms_a_session_token = "$MSA_TK"
+
+          ms_b_access_key = "$MSB_AK"
+          ms_b_secret_key = "$MSB_SK"
+          ms_b_session_token = "$MSB_TK"
+
+          data_access_key = "$DATA_AK"
+          data_secret_key = "$DATA_SK"
+          data_session_token = "$DATA_TK"
+
+          bastion_access_key = "$BAS_AK"
+          bastion_secret_key = "$BAS_SK"
+          bastion_session_token = "$BAS_TK"
+          EOF
+
+                    echo "TFV=/tmp/env.tfvars" >> $GITHUB_ENV
+
+
+      - name: Terraform init/plan/apply
+        working-directory: infra/terraform
+        run: |
+          terraform init -reconfigure -backend-config=${{ needs.set-env.outputs.backend }}
+          terraform plan -var-file="$TFV"
+          terraform apply -var-file="$TFV" -auto-approve
+          terraform output

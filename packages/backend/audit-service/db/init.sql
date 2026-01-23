@@ -1,1 +1,0 @@
-CREATE DATABASE bd_audit;

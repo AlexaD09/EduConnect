@@ -1,0 +1,256 @@
+name: Deploy Full App
+
+on:
+  push:
+    branches: [ features, qa, main ]
+
+concurrency:
+  group: deploy-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  set-env:
+    runs-on: ubuntu-latest
+    outputs:
+      env: ${{ steps.env.outputs.env }}
+      backend: ${{ steps.env.outputs.backend }}
+    steps:
+      - id: env
+        run: |
+          if [ "${GITHUB_REF_NAME}" = "main" ]; then
+            echo "env=prod" >> $GITHUB_OUTPUT
+            echo "backend=backend-prod.hcl" >> $GITHUB_OUTPUT
+          else
+            echo "env=qa" >> $GITHUB_OUTPUT
+            echo "backend=backend-qa.hcl" >> $GITHUB_OUTPUT
+          fi
+
+  build-and-push:
+    needs: set-env
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+      - name: Build & push backend images
+        run: |
+          set -e
+          TAG="${{ needs.set-env.outputs.env }}-latest"
+          SERVICES="user-service activity-service agreement-service approval-service audit-service notification-service document-service event-service backup-service evidence-service api-gateway"
+          for s in $SERVICES; do
+            if [ -d "packages/backend/$s" ]; then
+              docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/$s:$TAG packages/backend/$s
+              docker push ${{ secrets.DOCKERHUB_USERNAME }}/$s:$TAG
+            fi
+          done
+
+      - name: Build & push frontend web image
+        run: |
+          set -e
+          TAG="${{ needs.set-env.outputs.env }}-latest"
+          if [ -d "packages/frontend/web" ]; then
+            docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/frontend-web:$TAG packages/frontend/web
+            docker push ${{ secrets.DOCKERHUB_USERNAME }}/frontend-web:$TAG
+          fi
+
+  deploy:
+    needs: [set-env, build-and-push]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install jq
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_BASTION_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_BASTION_SECRET_ACCESS_KEY }}
+          aws-session-token:     ${{ secrets.AWS_BASTION_SESSION_TOKEN }}
+          aws-region: us-east-1
+
+      - name: Terraform init (read state)
+        working-directory: infra/terraform
+        run: |
+          terraform init -reconfigure -backend-config=${{ needs.set-env.outputs.backend }}
+
+      - name: Read outputs
+        working-directory: infra/terraform
+        run: |
+          terraform output -json > /tmp/tfout.json
+
+      - name: Prepare SSH key (from terraform output)
+        working-directory: infra/terraform
+        run: |
+          terraform output -raw ssh_private_key_pem > /tmp/key.pem
+          chmod 600 /tmp/key.pem
+
+      - name: Extract IPs
+        run: |
+          echo "BASTION_IP=$(cat /tmp/tfout.json | jq -r '.bastion_public_ip.value')" >> $GITHUB_ENV
+          echo "FE_WEB_IP=$(cat /tmp/tfout.json | jq -r '.frontend_web_private_ip.value')" >> $GITHUB_ENV
+          echo "API_GW_IP=$(cat /tmp/tfout.json | jq -r '.api_gateway_private_ip.value')" >> $GITHUB_ENV
+
+          echo "USER_IP=$(cat /tmp/tfout.json | jq -r '.user_private_ip.value')" >> $GITHUB_ENV || true
+          echo "ACT_IP=$(cat /tmp/tfout.json | jq -r '.activity_private_ip.value')" >> $GITHUB_ENV
+          echo "AGR_IP=$(cat /tmp/tfout.json | jq -r '.agreement_private_ip.value')" >> $GITHUB_ENV
+          echo "APP_IP=$(cat /tmp/tfout.json | jq -r '.approval_private_ip.value')" >> $GITHUB_ENV
+          echo "AUD_IP=$(cat /tmp/tfout.json | jq -r '.audit_private_ip.value')" >> $GITHUB_ENV
+          echo "NOTIF_IP=$(cat /tmp/tfout.json | jq -r '.notification_private_ip.value')" >> $GITHUB_ENV
+          echo "DOC_IP=$(cat /tmp/tfout.json | jq -r '.document_private_ip.value')" >> $GITHUB_ENV
+          echo "EVENT_IP=$(cat /tmp/tfout.json | jq -r '.event_private_ip.value')" >> $GITHUB_ENV
+          echo "BACKUP_IP=$(cat /tmp/tfout.json | jq -r '.backup_private_ip.value')" >> $GITHUB_ENV
+          echo "EVID_IP=$(cat /tmp/tfout.json | jq -r '.evidence_private_ip.value')" >> $GITHUB_ENV
+
+      - name: Upload jump key to Bastion
+        run: |
+          scp -i /tmp/key.pem -o StrictHostKeyChecking=no /tmp/key.pem ec2-user@${{ env.BASTION_IP }}:/tmp/jump.pem
+          ssh -i /tmp/key.pem -o StrictHostKeyChecking=no ec2-user@${{ env.BASTION_IP }} "chmod 600 /tmp/jump.pem"
+
+      - name: Configure Bastion NGINX
+        run: |
+          cat > /tmp/default.conf <<EOF
+          server {
+            listen 80;
+
+            location /api/ {
+              proxy_pass http://${{ env.API_GW_IP }}:8000/;
+            }
+
+            location / {
+              proxy_pass http://${{ env.FE_WEB_IP }}:80/;
+              try_files \$uri \$uri/ /index.html;
+            }
+          }
+          EOF
+
+          scp -i /tmp/key.pem -o StrictHostKeyChecking=no /tmp/default.conf ec2-user@${{ env.BASTION_IP }}:/tmp/default.conf
+          ssh -i /tmp/key.pem -o StrictHostKeyChecking=no ec2-user@${{ env.BASTION_IP }} "sudo mv /tmp/default.conf /etc/nginx/conf.d/default.conf && sudo nginx -t && sudo systemctl restart nginx"
+
+      - name: Deploy frontend-web container
+        run: |
+          TAG="${{ needs.set-env.outputs.env }}-latest"
+
+          ssh -i /tmp/key.pem -o StrictHostKeyChecking=no ec2-user@${{ env.BASTION_IP }} "
+            ssh -i /tmp/jump.pem -o StrictHostKeyChecking=no ec2-user@${{ env.FE_WEB_IP }} '
+              if ! command -v docker >/dev/null 2>&1; then
+                sudo yum update -y || true
+                sudo amazon-linux-extras install docker -y || sudo yum install -y docker
+                sudo systemctl enable docker
+                sudo systemctl start docker
+                sudo usermod -aG docker ec2-user
+              fi
+              sudo docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_PASSWORD }}
+              sudo docker pull ${{ secrets.DOCKERHUB_USERNAME }}/frontend-web:${TAG}
+              sudo docker rm -f frontend-web || true
+              sudo docker run -d --name frontend-web -p 80:80 ${{ secrets.DOCKERHUB_USERNAME }}/frontend-web:${TAG}
+            '
+          "
+
+      - name: Render API Gateway nginx with real upstream IPs
+        run: |
+          cat > /tmp/api-gw-nginx.conf <<EOF
+          events { worker_connections 1024; }
+          http {
+            upstream activity_service  { server ${{ env.ACT_IP }}:8000; }
+            upstream agreement_service { server ${{ env.AGR_IP }}:8000; }
+            upstream approval_service  { server ${{ env.APP_IP }}:8000; }
+            upstream audit_service     { server ${{ env.AUD_IP }}:8000; }
+            upstream notification_service { server ${{ env.NOTIF_IP }}:8000; }
+            upstream document_service  { server ${{ env.DOC_IP }}:8000; }
+            upstream event_service     { server ${{ env.EVENT_IP }}:8000; }
+            upstream backup_service    { server ${{ env.BACKUP_IP }}:8000; }
+            upstream evidence_service  { server ${{ env.EVID_IP }}:8000; }
+
+            server {
+              listen 80;
+
+              location /api/activity/      { proxy_pass http://activity_service/; }
+              location /api/agreement/     { proxy_pass http://agreement_service/; }
+              location /api/approval/      { proxy_pass http://approval_service/; }
+              location /api/audit/         { proxy_pass http://audit_service/; }
+              location /api/notification/  { proxy_pass http://notification_service/; }
+              location /api/document/      { proxy_pass http://document_service/; }
+              location /api/event/         { proxy_pass http://event_service/; }
+              location /api/backup/        { proxy_pass http://backup_service/; }
+              location /api/evidence/      { proxy_pass http://evidence_service/; }
+
+              location / { return 404; }
+            }
+          }
+          EOF
+
+          scp -i /tmp/key.pem -o StrictHostKeyChecking=no /tmp/api-gw-nginx.conf ec2-user@${{ env.BASTION_IP }}:/tmp/api-gw-nginx.conf
+
+      - name: Deploy api-gateway container (mount nginx)
+        run: |
+          TAG="${{ needs.set-env.outputs.env }}-latest"
+
+          ssh -i /tmp/key.pem -o StrictHostKeyChecking=no ec2-user@${{ env.BASTION_IP }} "
+            scp -i /tmp/jump.pem -o StrictHostKeyChecking=no /tmp/api-gw-nginx.conf ec2-user@${{ env.API_GW_IP }}:/tmp/nginx.conf
+            ssh -i /tmp/jump.pem -o StrictHostKeyChecking=no ec2-user@${{ env.API_GW_IP }} '
+              if ! command -v docker >/dev/null 2>&1; then
+                sudo yum update -y || true
+                sudo amazon-linux-extras install docker -y || sudo yum install -y docker
+                sudo systemctl enable docker
+                sudo systemctl start docker
+                sudo usermod -aG docker ec2-user
+              fi
+              sudo mkdir -p /etc/api-gateway
+              sudo mv /tmp/nginx.conf /etc/api-gateway/nginx.conf
+
+              sudo docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_PASSWORD }}
+              sudo docker pull ${{ secrets.DOCKERHUB_USERNAME }}/api-gateway:${TAG}
+              sudo docker rm -f api-gateway || true
+              sudo docker run -d --name api-gateway -p 8000:80 \
+                -v /etc/api-gateway/nginx.conf:/etc/nginx/nginx.conf:ro \
+                ${{ secrets.DOCKERHUB_USERNAME }}/api-gateway:${TAG}
+            '
+          "
+
+      - name: Deploy all microservices containers
+        run: |
+          TAG="${{ needs.set-env.outputs.env }}-latest"
+
+          deploy_micro () {
+            NAME="$1"
+            IP="$2"
+            PORT="$3"
+            IMAGE="$4"
+            ssh -i /tmp/key.pem -o StrictHostKeyChecking=no ec2-user@${{ env.BASTION_IP }} "
+              ssh -i /tmp/jump.pem -o StrictHostKeyChecking=no ec2-user@${IP} '
+                if ! command -v docker >/dev/null 2>&1; then
+                  sudo yum update -y || true
+                  sudo amazon-linux-extras install docker -y || sudo yum install -y docker
+                  sudo systemctl enable docker
+                  sudo systemctl start docker
+                  sudo usermod -aG docker ec2-user
+                fi
+                sudo docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_PASSWORD }}
+                sudo docker pull ${IMAGE}:${TAG}
+                sudo docker rm -f ${NAME} || true
+                sudo docker run -d --name ${NAME} -p ${PORT}:${PORT} ${IMAGE}:${TAG}
+              '
+            "
+          }
+
+          deploy_micro "activity-service"      "${{ env.ACT_IP }}"    "8000" "${{ secrets.DOCKERHUB_USERNAME }}/activity-service"
+          deploy_micro "agreement-service"     "${{ env.AGR_IP }}"    "8000" "${{ secrets.DOCKERHUB_USERNAME }}/agreement-service"
+          deploy_micro "approval-service"      "${{ env.APP_IP }}"    "8000" "${{ secrets.DOCKERHUB_USERNAME }}/approval-service"
+          deploy_micro "audit-service"         "${{ env.AUD_IP }}"    "8000" "${{ secrets.DOCKERHUB_USERNAME }}/audit-service"
+          deploy_micro "notification-service"  "${{ env.NOTIF_IP }}"  "8000" "${{ secrets.DOCKERHUB_USERNAME }}/notification-service"
+          deploy_micro "document-service"      "${{ env.DOC_IP }}"    "8000" "${{ secrets.DOCKERHUB_USERNAME }}/document-service"
+          deploy_micro "event-service"         "${{ env.EVENT_IP }}"  "8000" "${{ secrets.DOCKERHUB_USERNAME }}/event-service"
+          deploy_micro "backup-service"        "${{ env.BACKUP_IP }}" "8000" "${{ secrets.DOCKERHUB_USERNAME }}/backup-service"
+          deploy_micro "evidence-service"      "${{ env.EVID_IP }}"   "8000" "${{ secrets.DOCKERHUB_USERNAME }}/evidence-service"
+
+      - name: Cleanup
+        if: always()
+        run: |
+          ssh -i /tmp/key.pem -o StrictHostKeyChecking=no ec2-user@${{ env.BASTION_IP }} "rm -f /tmp/jump.pem"

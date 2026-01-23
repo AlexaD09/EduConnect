@@ -459,6 +459,69 @@ module "data_kafka" {
 }
 
 
+module "data_mongo" {
+  source    = "./modules/microservice_ec2"
+  providers = { aws = aws.data }
+
+  name             = "mongo-${var.environment}"
+  instance_type    = "t3.micro"
+  key_name         = aws_key_pair.data.key_name
+  allowed_app_port = 27017
+
+  vpc_id            = module.vpc_data.vpc_id
+  subnet_ids        = module.vpc_data.private_subnet_ids
+  allowed_app_cidrs = [var.cidr_ms_a, var.cidr_ms_b]
+  bastion_cidr      = var.cidr_bastion
+  instance_count    = 1
+}
+
+module "data_rabbitmq" {
+  source    = "./modules/microservice_ec2"
+  providers = { aws = aws.data }
+
+  name             = "rabbitmq-${var.environment}"
+  instance_type    = "t3.micro"
+  key_name         = aws_key_pair.data.key_name
+  allowed_app_port = 5672
+
+  vpc_id            = module.vpc_data.vpc_id
+  subnet_ids        = module.vpc_data.private_subnet_ids
+  allowed_app_cidrs = [var.cidr_ms_a, var.cidr_ms_b]
+  bastion_cidr      = var.cidr_bastion
+  instance_count    = 1
+}
+
+module "data_mqtt" {
+  source    = "./modules/microservice_ec2"
+  providers = { aws = aws.data }
+
+  name             = "mqtt-${var.environment}"
+  instance_type    = "t3.micro"
+  key_name         = aws_key_pair.data.key_name
+  allowed_app_port = 1883
+
+  vpc_id            = module.vpc_data.vpc_id
+  subnet_ids        = module.vpc_data.private_subnet_ids
+  allowed_app_cidrs = [var.cidr_ms_a, var.cidr_ms_b]
+  bastion_cidr      = var.cidr_bastion
+  instance_count    = 1
+}
+
+module "data_n8n" {
+  source    = "./modules/microservice_ec2"
+  providers = { aws = aws.data }
+
+  name             = "n8n-${var.environment}"
+  instance_type    = "t3.micro"
+  key_name         = aws_key_pair.data.key_name
+  allowed_app_port = 5678
+
+  vpc_id            = module.vpc_data.vpc_id
+  subnet_ids        = module.vpc_data.private_subnet_ids
+  allowed_app_cidrs = [var.cidr_ms_a, var.cidr_ms_b]
+  bastion_cidr      = var.cidr_bastion
+  instance_count    = 1
+}
 
 
 

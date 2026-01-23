@@ -1,31 +1,37 @@
 import { useState } from "react";
 import { loginUser } from "../../../services/user-service";
-import { useNavigate } from "react-router-dom"; // ← Agrega esto
+import { useNavigate } from "react-router-dom";
 import "../Login.css";
 
 export default function Login() {
-  const [username, setUsername] = useState(""); 
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [msg, setMsg] = useState("");
-  const navigate = useNavigate(); // ← Agrega esto
+  const navigate = useNavigate();
 
   const handleLogin = async () => {
+    setMsg("");
     if (!username || !password) {
       setMsg("❌ Please enter both username and password");
       return;
     }
-   
+
     try {
       const res = await loginUser(username, password);
-      setMsg("✅ Successful login");
-      
-      // 🔹 REDIRECCIÓN SEGÚN ROL
-      if (res.role === "STUDENT") {
-        navigate("/dashboard/student");
-      } else if (res.role === "COORDINATOR") {
-        navigate("/dashboard/coordinator");
+
+      const role = String(res.role || "").toUpperCase().trim();
+
+      if (role === "STUDENT") {
+        navigate("/dashboard/student", { replace: true });
+        return;
       }
-      
+
+      if (role === "COORDINATOR") {
+        navigate("/dashboard/coordinator", { replace: true });
+        return;
+      }
+
+      setMsg(`❌ Unknown role: ${role || "(empty)"}`);
     } catch (err) {
       setMsg(err.message);
     }
