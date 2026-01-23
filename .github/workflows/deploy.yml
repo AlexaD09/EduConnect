@@ -143,10 +143,15 @@ jobs:
         run: |
           set -e
           TABLE="academic-linkage-terraform-locks"
-          LOCK_ID=$(aws dynamodb scan --table-name "$TABLE" --max-items 1 | jq -r '.Items[0].LockID.S // empty')
-          if [ -n "$LOCK_ID" ]; then
-            terraform -chdir=infra/terraform force-unlock -force "$LOCK_ID" || true
+          LOCKKEY="academic-linkage-terraform-state/infra/${{ needs.set-env.outputs.env }}/terraform.tfstate"
+          INFO=$(aws dynamodb get-item --table-name "$TABLE" --key "{\"LockID\":{\"S\":\"$LOCKKEY\"}}" | jq -r '.Item.Info.S // empty')
+          if [ -n "$INFO" ]; then
+            REAL_ID=$(echo "$INFO" | jq -r '.ID // empty')
+            if [ -n "$REAL_ID" ]; then
+              terraform -chdir=infra/terraform force-unlock -force "$REAL_ID" || true
+            fi
           fi
+
 
       - name: Terraform apply
         run: terraform -chdir=infra/terraform apply -auto-approve -var-file=${{ needs.set-env.outputs.env }}.tfvars
