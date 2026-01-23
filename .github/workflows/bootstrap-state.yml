@@ -1,7 +1,17 @@
 name: Bootstrap - State Bucket (one time)
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      env:
+        description: "qa o prod"
+        required: true
+        default: "qa"
+        type: choice
+        options:
+          - qa
+          - prod
+
 
 jobs:
   state-bucket:
