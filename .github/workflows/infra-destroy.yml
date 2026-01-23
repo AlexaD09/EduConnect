@@ -14,13 +14,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # credenciales para acceder al bucket del state (pueden ser bastion también)
+    
       - uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id:     ${{ secrets.AWS_STATE_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_STATE_SECRET_ACCESS_KEY }}
-          aws-session-token:     ${{ secrets.AWS_STATE_SESSION_TOKEN }}
-          aws-region: us-east-1
+            aws-access-key-id:     ${{ secrets.AWS_BASTION_ACCESS_KEY_ID }}
+            aws-secret-access-key: ${{ secrets.AWS_BASTION_SECRET_ACCESS_KEY }}
+            aws-session-token:     ${{ secrets.AWS_BASTION_SESSION_TOKEN }}
+            aws-region: us-east-1
 
       - name: Build tfvars (base file + secrets override)
         working-directory: infra/terraform

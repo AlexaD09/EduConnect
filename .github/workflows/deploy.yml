@@ -9,7 +9,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  set-env:
+  set-env: 
     runs-on: ubuntu-latest
     outputs:
       env: ${{ steps.env.outputs.env }}
