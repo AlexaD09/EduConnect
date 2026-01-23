@@ -5,3 +5,5 @@
 *.tfvars
 **/*.auto.tfvars
 **/*secrets*.tfvars
+!qa.tfvars
+!prod.tfvars
