@@ -3,7 +3,7 @@ name: Infra Apply (QA/PROD by branch)
 on:
   push:
     branches: [ features, qa, main ]
-  workflow_dispatch: {}  
+  
 
 concurrency:
   group: infra-${{ github.ref_name }}
