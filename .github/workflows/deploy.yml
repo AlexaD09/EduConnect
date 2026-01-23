@@ -225,7 +225,7 @@ jobs:
           }
           EOF
           scp -i /tmp/key.pem -o StrictHostKeyChecking=no /tmp/default.conf ec2-user@${{ env.BASTION_IP }}:/tmp/default.conf
-          ssh -i /tmp/key.pem -o StrictHostKeyChecking=no ec2-user@${{ env.BASTION_IP }} "sudo mv /tmp/default.conf /etc/nginx/conf.d/default.conf && sudo nginx -t && sudo systemctl restart nginx"
+          ssh -i /tmp/key.pem -o StrictHostKeyChecking=no ec2-user@${{ env.BASTION_IP }} "sudo mkdir -p /etc/nginx/conf.d && sudo mv /tmp/default.conf /etc/nginx/conf.d/default.conf && sudo nginx -t && sudo systemctl restart nginx"
 
       - name: Create remote prep script
         run: |
