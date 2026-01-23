@@ -138,9 +138,15 @@ jobs:
 
       - name: Terraform init
         run: terraform -chdir=infra/terraform init -reconfigure -backend-config=${{ needs.set-env.outputs.backend }}
-      - name: Force unlock if stuck
+      
+      - name: Unlock terraform state if locked
         run: |
-          terraform -chdir=infra/terraform force-unlock -force 93ba0965-5e2c-2cdd-7ee7-7a824025fb62 || true
+          set -e
+          TABLE="academic-linkage-terraform-locks"
+          LOCK_ID=$(aws dynamodb scan --table-name "$TABLE" --max-items 1 | jq -r '.Items[0].LockID.S // empty')
+          if [ -n "$LOCK_ID" ]; then
+            terraform -chdir=infra/terraform force-unlock -force "$LOCK_ID" || true
+          fi
 
       - name: Terraform apply
         run: terraform -chdir=infra/terraform apply -auto-approve -var-file=${{ needs.set-env.outputs.env }}.tfvars
