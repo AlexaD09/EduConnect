@@ -118,7 +118,7 @@ jobs:
 
       - name: Terraform apply
         working-directory: infra/terraform
-        run: terraform apply -auto-approve -var-file=${{ needs.set-env.outputs.env }}.tfvars
+        run: terraform apply -auto-approve -var-file="${{ needs.set-env.outputs.env }}.tfvars"
   
 
       - name: Read outputs
