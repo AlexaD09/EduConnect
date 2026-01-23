@@ -30,11 +30,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.6.6
-
 
       - uses: docker/login-action@v3
         with:
@@ -68,7 +63,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install jq
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.6
+
+      - name: Install tools
         run: |
           sudo apt-get update
           sudo apt-get install -y jq
@@ -80,35 +80,39 @@ jobs:
           aws-session-token:     ${{ secrets.AWS_BASTION_SESSION_TOKEN }}
           aws-region: us-east-1
 
-      - name: Terraform init (read state)
+      - name: Terraform init
         working-directory: infra/terraform
-        run: |
-          terraform init -reconfigure -backend-config=${{ needs.set-env.outputs.backend }}
+        run: terraform init -reconfigure -backend-config=${{ needs.set-env.outputs.backend }}
 
       - name: Read outputs
         working-directory: infra/terraform
-        run: |
-          terraform output -json > /tmp/tfout.json
+        run: terraform output -json > /tmp/tfout.json
 
-      - name: Prepare SSH key (from terraform output json)
+      - name: Prepare SSH key
         run: |
           set -e
           KEY=$(jq -r '.ssh_private_key_pem.value // empty' /tmp/tfout.json)
           if [ -z "$KEY" ]; then
-            echo "ERROR: ssh_private_key_pem is empty in terraform output json"
+            echo "ERROR: ssh_private_key_pem is empty"
             cat /tmp/tfout.json | jq '.'
             exit 1
           fi
           echo "$KEY" > /tmp/key.pem
           chmod 600 /tmp/key.pem
 
-
       - name: Extract IPs
         run: |
           set -e
           TF=/tmp/tfout.json
 
-          echo "BASTION_IP=$(jq -r '.bastion_public_ip.value' $TF)" >> $GITHUB_ENV
+          BASTION_IP=$(jq -r '.bastion_public_ip.value // empty' $TF)
+          if [ -z "$BASTION_IP" ] || [ "$BASTION_IP" = "null" ]; then
+            echo "ERROR: bastion_public_ip is empty"
+            cat $TF | jq '.'
+            exit 1
+          fi
+          echo "BASTION_IP=$BASTION_IP" >> $GITHUB_ENV
+
           echo "FE_WEB_IP=$(jq -r '.frontend_web_private_ip.value' $TF)" >> $GITHUB_ENV
           echo "API_GW_IP=$(jq -r '.api_gateway_private_ip.value' $TF)" >> $GITHUB_ENV
 
@@ -130,41 +134,29 @@ jobs:
           echo "RABBIT_IP=$(jq -r '.rabbit_private_ip.value' $TF)" >> $GITHUB_ENV
           echo "N8N_IP=$(jq -r '.n8n_private_ip.value' $TF)" >> $GITHUB_ENV
 
-          BASTION_IP=$(jq -r '.bastion_public_ip.value // empty' /tmp/tfout.json)
-          if [ -z "$BASTION_IP" ]; then
-            echo "ERROR: bastion_public_ip is empty"
-            cat /tmp/tfout.json | jq '.'
-            exit 1
-          fi
-          echo "BASTION_IP=$BASTION_IP" >> $GITHUB_ENV
-
-
-      - name: Upload jump key to Bastion 
+      - name: Upload jump key to bastion
         run: |
           scp -i /tmp/key.pem -o StrictHostKeyChecking=no /tmp/key.pem ec2-user@${{ env.BASTION_IP }}:/tmp/jump.pem
           ssh -i /tmp/key.pem -o StrictHostKeyChecking=no ec2-user@${{ env.BASTION_IP }} "chmod 600 /tmp/jump.pem"
 
-      - name: Configure Bastion NGINX (public entrypoint)
+      - name: Configure bastion nginx
         run: |
           cat > /tmp/default.conf <<EOF
           server {
             listen 80;
-
             location /api/ {
               proxy_pass http://${{ env.API_GW_IP }}:8000/;
             }
-
             location / {
               proxy_pass http://${{ env.FE_WEB_IP }}:80/;
               try_files \$uri \$uri/ /index.html;
             }
           }
           EOF
-
           scp -i /tmp/key.pem -o StrictHostKeyChecking=no /tmp/default.conf ec2-user@${{ env.BASTION_IP }}:/tmp/default.conf
           ssh -i /tmp/key.pem -o StrictHostKeyChecking=no ec2-user@${{ env.BASTION_IP }} "sudo mv /tmp/default.conf /etc/nginx/conf.d/default.conf && sudo nginx -t && sudo systemctl restart nginx"
 
-      - name: Common - install docker + create network (remote helper)
+      - name: Create remote prep script
         run: |
           cat > /tmp/remote_prep.sh <<'SH'
           set -e
@@ -179,10 +171,9 @@ jobs:
           SH
           chmod +x /tmp/remote_prep.sh
 
-      - name: Deploy frontend-web container
+      - name: Deploy frontend web
         run: |
           TAG="${{ needs.set-env.outputs.env }}-latest"
-
           ssh -i /tmp/key.pem -o StrictHostKeyChecking=no ec2-user@${{ env.BASTION_IP }} "
             scp -i /tmp/jump.pem -o StrictHostKeyChecking=no /tmp/remote_prep.sh ec2-user@${{ env.FE_WEB_IP }}:/tmp/remote_prep.sh
             ssh -i /tmp/jump.pem -o StrictHostKeyChecking=no ec2-user@${{ env.FE_WEB_IP }} '
@@ -194,7 +185,7 @@ jobs:
             '
           "
 
-      - name: Render API Gateway nginx with real upstream IPs (plural routes)
+      - name: Render api gateway nginx
         run: |
           cat > /tmp/api-gw-nginx.conf <<EOF
           events { worker_connections 1024; }
@@ -208,23 +199,19 @@ jobs:
 
             server {
               listen 80;
-
               location /api/users/      { limit_req zone=api burst=20 nodelay; proxy_pass http://user_service/; }
               location /api/activities/ { limit_req zone=api burst=20 nodelay; proxy_pass http://activity_service/; }
               location /api/agreements/ { limit_req zone=api burst=20 nodelay; proxy_pass http://agreement_service/; }
               location /api/approvals/  { limit_req zone=api burst=20 nodelay; proxy_pass http://approval_service/; }
-
               location / { return 404; }
             }
           }
           EOF
-
           scp -i /tmp/key.pem -o StrictHostKeyChecking=no /tmp/api-gw-nginx.conf ec2-user@${{ env.BASTION_IP }}:/tmp/api-gw-nginx.conf
 
-      - name: Deploy api-gateway container (mount nginx)
+      - name: Deploy api gateway
         run: |
           TAG="${{ needs.set-env.outputs.env }}-latest"
-
           ssh -i /tmp/key.pem -o StrictHostKeyChecking=no ec2-user@${{ env.BASTION_IP }} "
             scp -i /tmp/jump.pem -o StrictHostKeyChecking=no /tmp/api-gw-nginx.conf ec2-user@${{ env.API_GW_IP }}:/tmp/nginx.conf
             scp -i /tmp/jump.pem -o StrictHostKeyChecking=no /tmp/remote_prep.sh ec2-user@${{ env.API_GW_IP }}:/tmp/remote_prep.sh
@@ -232,21 +219,17 @@ jobs:
               bash /tmp/remote_prep.sh
               sudo mkdir -p /etc/api-gateway
               sudo mv /tmp/nginx.conf /etc/api-gateway/nginx.conf
-
               sudo docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_PASSWORD }}
               sudo docker pull ${{ secrets.DOCKERHUB_USERNAME }}/api-gateway:${TAG}
               sudo docker rm -f api-gateway || true
-              sudo docker run -d --name api-gateway --network app-network -p 8000:80 \
-                -v /etc/api-gateway/nginx.conf:/etc/nginx/nginx.conf:ro \
-                ${{ secrets.DOCKERHUB_USERNAME }}/api-gateway:${TAG}
+              sudo docker run -d --name api-gateway --network app-network -p 8000:80 -v /etc/api-gateway/nginx.conf:/etc/nginx/nginx.conf:ro ${{ secrets.DOCKERHUB_USERNAME }}/api-gateway:${TAG}
             '
           "
 
-      - name: Deploy DB+Services like docker-compose (user/activity/agreement/approval)
+      - name: Deploy db+services
         run: |
           TAG="${{ needs.set-env.outputs.env }}-latest"
 
-          # sube init scripts al bastion
           scp -i /tmp/key.pem -o StrictHostKeyChecking=no -r packages/backend/user-service/db ec2-user@${{ env.BASTION_IP }}:/tmp/user-db-init
           scp -i /tmp/key.pem -o StrictHostKeyChecking=no -r packages/backend/activity-service/db ec2-user@${{ env.BASTION_IP }}:/tmp/activity-db-init
           scp -i /tmp/key.pem -o StrictHostKeyChecking=no -r packages/backend/agreement-service/db ec2-user@${{ env.BASTION_IP }}:/tmp/agreement-db-init
@@ -260,6 +243,7 @@ jobs:
             DB_CONTAINER="$5"
             SVC_CONTAINER="$6"
             IMAGE="$7"
+            SRC="$8"
 
             ssh -i /tmp/key.pem -o StrictHostKeyChecking=no ec2-user@${{ env.BASTION_IP }} "
               scp -i /tmp/jump.pem -o StrictHostKeyChecking=no /tmp/remote_prep.sh ec2-user@${HOST_IP}:/tmp/remote_prep.sh
@@ -267,148 +251,48 @@ jobs:
                 bash /tmp/remote_prep.sh
                 sudo docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_PASSWORD }}
               '
-            "
-
-            # copia init scripts desde bastion al host
-            ssh -i /tmp/key.pem -o StrictHostKeyChecking=no ec2-user@${{ env.BASTION_IP }} "
-              scp -i /tmp/jump.pem -o StrictHostKeyChecking=no -r /tmp/${DB_CONTAINER}-init/db ec2-user@${HOST_IP}:/tmp/${DB_CONTAINER}-init
-            "
-
-            ssh -i /tmp/key.pem -o StrictHostKeyChecking=no ec2-user@${{ env.BASTION_IP }} "
+              rm -rf /tmp/${DB_CONTAINER}-init || true
+              mkdir -p /tmp/${DB_CONTAINER}-init
+              cp -r ${SRC}/db/* /tmp/${DB_CONTAINER}-init/ || true
+              scp -i /tmp/jump.pem -o StrictHostKeyChecking=no -r /tmp/${DB_CONTAINER}-init ec2-user@${HOST_IP}:/tmp/${DB_CONTAINER}-init
               ssh -i /tmp/jump.pem -o StrictHostKeyChecking=no ec2-user@${HOST_IP} '
                 sudo docker rm -f ${DB_CONTAINER} || true
-                sudo docker run -d --name ${DB_CONTAINER} --network app-network \
-                  -e POSTGRES_DB=${DB_NAME} \
-                  -e POSTGRES_USER=${DB_USER} \
-                  -e POSTGRES_PASSWORD=${DB_PASS} \
-                  -v /tmp/${DB_CONTAINER}-init:/docker-entrypoint-initdb.d \
-                  postgres:15
-
+                sudo docker run -d --name ${DB_CONTAINER} --network app-network -e POSTGRES_DB=${DB_NAME} -e POSTGRES_USER=${DB_USER} -e POSTGRES_PASSWORD=${DB_PASS} -v /tmp/${DB_CONTAINER}-init:/docker-entrypoint-initdb.d postgres:15
                 sudo docker pull ${IMAGE}:${TAG}
                 sudo docker rm -f ${SVC_CONTAINER} || true
-                sudo docker run -d --name ${SVC_CONTAINER} --network app-network -p 8000:8000 \
-                  -e DB_HOST=${DB_CONTAINER} \
-                  -e DB_PORT=5432 \
-                  -e DB_NAME=${DB_NAME} \
-                  -e DB_USER=${DB_USER} \
-                  -e DB_PASSWORD=${DB_PASS} \
-                  ${IMAGE}:${TAG}
+                sudo docker run -d --name ${SVC_CONTAINER} --network app-network -p 8000:8000 -e DB_HOST=${DB_CONTAINER} -e DB_PORT=5432 -e DB_NAME=${DB_NAME} -e DB_USER=${DB_USER} -e DB_PASSWORD=${DB_PASS} ${IMAGE}:${TAG}
               '
             "
           }
 
-          # renombra carpetas en bastion para que la función copie bien
-          ssh -i /tmp/key.pem -o StrictHostKeyChecking=no ec2-user@${{ env.BASTION_IP }} "
-            mv /tmp/user-db-init /tmp/user-db-init-tmp && mkdir -p /tmp/user-db-init && mv /tmp/user-db-init-tmp/db /tmp/user-db-init/db
-            mv /tmp/activity-db-init /tmp/activity-db-init-tmp && mkdir -p /tmp/activity-db-init && mv /tmp/activity-db-init-tmp/db /tmp/activity-db-init/db
-            mv /tmp/agreement-db-init /tmp/agreement-db-init-tmp && mkdir -p /tmp/agreement-db-init && mv /tmp/agreement-db-init-tmp/db /tmp/agreement-db-init/db
-            mv /tmp/approval-db-init /tmp/approval-db-init-tmp && mkdir -p /tmp/approval-db-init && mv /tmp/approval-db-init-tmp/db /tmp/approval-db-init/db
-          "
+          deploy_pair "${{ env.USER_IP }}" "bd_academic_users" "postgres" "userdb123" "user-db" "user-service" "${{ secrets.DOCKERHUB_USERNAME }}/user-service" "/tmp/user-db-init"
+          deploy_pair "${{ env.ACT_IP }}" "activity_db" "admin" "activitydb123" "activity-db" "activity-service" "${{ secrets.DOCKERHUB_USERNAME }}/activity-service" "/tmp/activity-db-init"
+          deploy_pair "${{ env.AGR_IP }}" "agreement_db" "admin" "agreementdb123" "agreement-db" "agreement-service" "${{ secrets.DOCKERHUB_USERNAME }}/agreement-service" "/tmp/agreement-db-init"
+          deploy_pair "${{ env.APP_IP }}" "approval_db" "admin" "approvaldb123" "approval-db" "approval-service" "${{ secrets.DOCKERHUB_USERNAME }}/approval-service" "/tmp/approval-db-init"
 
-          # user
-          ssh -i /tmp/key.pem -o StrictHostKeyChecking=no ec2-user@${{ env.BASTION_IP }} "mv /tmp/user-db-init /tmp/user-db-init-init || true"
-          ssh -i /tmp/key.pem -o StrictHostKeyChecking=no ec2-user@${{ env.BASTION_IP }} "mv /tmp/user-db-init-init /tmp/user-db-init || true"
-          ssh -i /tmp/key.pem -o StrictHostKeyChecking=no ec2-user@${{ env.BASTION_IP }} "mv /tmp/user-db-init /tmp/user-db-init || true"
-          ssh -i /tmp/key.pem -o StrictHostKeyChecking=no ec2-user@${{ env.BASTION_IP }} "mv /tmp/user-db-init /tmp/user-db-init || true"
-
-          # mapeo exacto a lo que espera la función: /tmp/<DB_CONTAINER>-init/db
-          ssh -i /tmp/key.pem -o StrictHostKeyChecking=no ec2-user@${{ env.BASTION_IP }} "mv /tmp/user-db-init /tmp/user-db-init || true"
-
-          # realmente: creamos las rutas que la función usa:
-          ssh -i /tmp/key.pem -o StrictHostKeyChecking=no ec2-user@${{ env.BASTION_IP }} "
-            rm -rf /tmp/user-db-init && mv /tmp/user-db-init-tmp /tmp/user-db-init || true
-            rm -rf /tmp/activity-db-init && mv /tmp/activity-db-init-tmp /tmp/activity-db-init || true
-            rm -rf /tmp/agreement-db-init && mv /tmp/agreement-db-init-tmp /tmp/agreement-db-init || true
-            rm -rf /tmp/approval-db-init && mv /tmp/approval-db-init-tmp /tmp/approval-db-init || true
-          "
-
-          # Copias correctas (DB_CONTAINER)-init
-          ssh -i /tmp/key.pem -o StrictHostKeyChecking=no ec2-user@${{ env.BASTION_IP }} "rm -rf /tmp/user-db-init && cp -r /tmp/user-db-init-tmp /tmp/user-db-init || true" || true
-
-          # Deploys (container names igual a tu compose)
-          deploy_pair "${{ env.USER_IP }}"  "bd_academic_users" "postgres" "userdb123"      "user-db"     "user-service"     "${{ secrets.DOCKERHUB_USERNAME }}/user-service"
-          deploy_pair "${{ env.ACT_IP }}"   "activity_db"      "admin"    "activitydb123"  "activity-db" "activity-service" "${{ secrets.DOCKERHUB_USERNAME }}/activity-service"
-          deploy_pair "${{ env.AGR_IP }}"   "agreement_db"     "admin"    "agreementdb123" "agreement-db" "agreement-service" "${{ secrets.DOCKERHUB_USERNAME }}/agreement-service"
-          deploy_pair "${{ env.APP_IP }}"   "approval_db"      "admin"    "approvaldb123"  "approval-db" "approval-service" "${{ secrets.DOCKERHUB_USERNAME }}/approval-service"
-
-      - name: Deploy data containers (redis/mqtt/kafka/mongo/rabbit/n8n) on their EC2
+      - name: Deploy data containers
         run: |
           ssh -i /tmp/key.pem -o StrictHostKeyChecking=no ec2-user@${{ env.BASTION_IP }} "
-            deploy_data () {
+            run_on () {
               IP=\$1
-              shift
+              CMD=\$2
               scp -i /tmp/jump.pem -o StrictHostKeyChecking=no /tmp/remote_prep.sh ec2-user@\$IP:/tmp/remote_prep.sh
-              ssh -i /tmp/jump.pem -o StrictHostKeyChecking=no ec2-user@\$IP \"bash /tmp/remote_prep.sh; sudo docker rm -f \$@ || true\"
+              ssh -i /tmp/jump.pem -o StrictHostKeyChecking=no ec2-user@\$IP \"bash /tmp/remote_prep.sh; \$CMD\"
             }
-            :
-          " || true
-
-          # Redis
-          ssh -i /tmp/key.pem -o StrictHostKeyChecking=no ec2-user@${{ env.BASTION_IP }} "
-            scp -i /tmp/jump.pem -o StrictHostKeyChecking=no /tmp/remote_prep.sh ec2-user@${{ env.REDIS_IP }}:/tmp/remote_prep.sh
-            ssh -i /tmp/jump.pem -o StrictHostKeyChecking=no ec2-user@${{ env.REDIS_IP }} '
-              bash /tmp/remote_prep.sh
-              sudo docker rm -f redis || true
-              sudo docker run -d --name redis --network app-network -p 6379:6379 redis:7
-            '
+            run_on ${{ env.REDIS_IP }}  'sudo docker rm -f redis || true; sudo docker run -d --name redis --network app-network -p 6379:6379 redis:7'
+            run_on ${{ env.MQTT_IP }}   'sudo docker rm -f mqtt-broker || true; sudo docker run -d --name mqtt-broker --network app-network -p 1883:1883 eclipse-mosquitto'
+            run_on ${{ env.KAFKA_IP }}  'sudo docker rm -f kafka || true; sudo docker run -d --name kafka --network app-network -p 9092:9092 apache/kafka:latest'
+            run_on ${{ env.MONGO_IP }}  'sudo docker rm -f mongo || true; sudo docker run -d --name mongo --network app-network -p 27017:27017 mongo:6'
+            run_on ${{ env.RABBIT_IP }} 'sudo docker rm -f rabbitmq || true; sudo docker run -d --name rabbitmq --network app-network -p 5672:5672 rabbitmq:3'
+            run_on ${{ env.N8N_IP }}    'sudo docker rm -f n8n || true; sudo docker run -d --name n8n --network app-network -p 5678:5678 n8nio/n8n'
           "
 
-          # MQTT
-          ssh -i /tmp/key.pem -o StrictHostKeyChecking=no ec2-user@${{ env.BASTION_IP }} "
-            scp -i /tmp/jump.pem -o StrictHostKeyChecking=no /tmp/remote_prep.sh ec2-user@${{ env.MQTT_IP }}:/tmp/remote_prep.sh
-            ssh -i /tmp/jump.pem -o StrictHostKeyChecking=no ec2-user@${{ env.MQTT_IP }} '
-              bash /tmp/remote_prep.sh
-              sudo docker rm -f mqtt-broker || true
-              sudo docker run -d --name mqtt-broker --network app-network -p 1883:1883 eclipse-mosquitto
-            '
-          "
-
-          # Kafka
-          ssh -i /tmp/key.pem -o StrictHostKeyChecking=no ec2-user@${{ env.BASTION_IP }} "
-            scp -i /tmp/jump.pem -o StrictHostKeyChecking=no /tmp/remote_prep.sh ec2-user@${{ env.KAFKA_IP }}:/tmp/remote_prep.sh
-            ssh -i /tmp/jump.pem -o StrictHostKeyChecking=no ec2-user@${{ env.KAFKA_IP }} '
-              bash /tmp/remote_prep.sh
-              sudo docker rm -f kafka || true
-              sudo docker run -d --name kafka --network app-network -p 9092:9092 apache/kafka:latest
-            '
-          "
-
-          # Mongo
-          ssh -i /tmp/key.pem -o StrictHostKeyChecking=no ec2-user@${{ env.BASTION_IP }} "
-            scp -i /tmp/jump.pem -o StrictHostKeyChecking=no /tmp/remote_prep.sh ec2-user@${{ env.MONGO_IP }}:/tmp/remote_prep.sh
-            ssh -i /tmp/jump.pem -o StrictHostKeyChecking=no ec2-user@${{ env.MONGO_IP }} '
-              bash /tmp/remote_prep.sh
-              sudo docker rm -f mongo || true
-              sudo docker run -d --name mongo --network app-network -p 27017:27017 mongo:6
-            '
-          "
-
-          # Rabbit
-          ssh -i /tmp/key.pem -o StrictHostKeyChecking=no ec2-user@${{ env.BASTION_IP }} "
-            scp -i /tmp/jump.pem -o StrictHostKeyChecking=no /tmp/remote_prep.sh ec2-user@${{ env.RABBIT_IP }}:/tmp/remote_prep.sh
-            ssh -i /tmp/jump.pem -o StrictHostKeyChecking=no ec2-user@${{ env.RABBIT_IP }} '
-              bash /tmp/remote_prep.sh
-              sudo docker rm -f rabbitmq || true
-              sudo docker run -d --name rabbitmq --network app-network -p 5672:5672 rabbitmq:3
-            '
-          "
-
-          # n8n
-          ssh -i /tmp/key.pem -o StrictHostKeyChecking=no ec2-user@${{ env.BASTION_IP }} "
-            scp -i /tmp/jump.pem -o StrictHostKeyChecking=no /tmp/remote_prep.sh ec2-user@${{ env.N8N_IP }}:/tmp/remote_prep.sh
-            ssh -i /tmp/jump.pem -o StrictHostKeyChecking=no ec2-user@${{ env.N8N_IP }} '
-              bash /tmp/remote_prep.sh
-              sudo docker rm -f n8n || true
-              sudo docker run -d --name n8n --network app-network -p 5678:5678 n8nio/n8n
-            '
-          "
-
-      - name: Deploy other microservices (no-db) + notification with real IPs
+      - name: Deploy remaining services
         run: |
           TAG="${{ needs.set-env.outputs.env }}-latest"
 
           deploy_micro () {
-            NAME="$1"; IP="$2"; IMAGE="$3"; EXTRA_ENV="$4"
+            NAME="$1"; IP="$2"; IMAGE="$3"; EXTRA="$4"
             ssh -i /tmp/key.pem -o StrictHostKeyChecking=no ec2-user@${{ env.BASTION_IP }} "
               scp -i /tmp/jump.pem -o StrictHostKeyChecking=no /tmp/remote_prep.sh ec2-user@${IP}:/tmp/remote_prep.sh
               ssh -i /tmp/jump.pem -o StrictHostKeyChecking=no ec2-user@${IP} '
@@ -416,21 +300,17 @@ jobs:
                 sudo docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_PASSWORD }}
                 sudo docker pull ${IMAGE}:${TAG}
                 sudo docker rm -f ${NAME} || true
-                sudo docker run -d --name ${NAME} --network app-network -p 8000:8000 ${EXTRA_ENV} ${IMAGE}:${TAG}
+                sudo docker run -d --name ${NAME} --network app-network -p 8000:8000 ${EXTRA} ${IMAGE}:${TAG}
               '
             "
           }
 
-          # notification (usa MQTT + Redis reales por IP)
-          deploy_micro "notification-service" "${{ env.NOTIF_IP }}" "${{ secrets.DOCKERHUB_USERNAME }}/notification-service" \
-            "-e MQTT_BROKER=${{ env.MQTT_IP }} -e MQTT_PORT=1883 -e REDIS_HOST=${{ env.REDIS_IP }} -e REDIS_PORT=6379"
-
-          # audit/document/event/backup/evidence (sin env en tu código)
-          deploy_micro "audit-service"     "${{ env.AUD_IP }}"    "${{ secrets.DOCKERHUB_USERNAME }}/audit-service" ""
-          deploy_micro "document-service"  "${{ env.DOC_IP }}"    "${{ secrets.DOCKERHUB_USERNAME }}/document-service" ""
-          deploy_micro "event-service"     "${{ env.EVENT_IP }}"  "${{ secrets.DOCKERHUB_USERNAME }}/event-service" ""
-          deploy_micro "backup-service"    "${{ env.BACKUP_IP }}" "${{ secrets.DOCKERHUB_USERNAME }}/backup-service" ""
-          deploy_micro "evidence-service"  "${{ env.EVID_IP }}"   "${{ secrets.DOCKERHUB_USERNAME }}/evidence-service" ""
+          deploy_micro "notification-service" "${{ env.NOTIF_IP }}" "${{ secrets.DOCKERHUB_USERNAME }}/notification-service" "-e MQTT_BROKER=${{ env.MQTT_IP }} -e MQTT_PORT=1883 -e REDIS_HOST=${{ env.REDIS_IP }} -e REDIS_PORT=6379"
+          deploy_micro "audit-service" "${{ env.AUD_IP }}" "${{ secrets.DOCKERHUB_USERNAME }}/audit-service" ""
+          deploy_micro "document-service" "${{ env.DOC_IP }}" "${{ secrets.DOCKERHUB_USERNAME }}/document-service" ""
+          deploy_micro "event-service" "${{ env.EVENT_IP }}" "${{ secrets.DOCKERHUB_USERNAME }}/event-service" ""
+          deploy_micro "backup-service" "${{ env.BACKUP_IP }}" "${{ secrets.DOCKERHUB_USERNAME }}/backup-service" ""
+          deploy_micro "evidence-service" "${{ env.EVID_IP }}" "${{ secrets.DOCKERHUB_USERNAME }}/evidence-service" ""
 
       - name: Cleanup
         if: always()
