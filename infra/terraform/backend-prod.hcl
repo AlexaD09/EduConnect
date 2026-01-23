@@ -1,3 +1,5 @@
-bucket = "academic-linkage-terraform-state"
-key    = "infra/prod/terraform.tfstate"
-region = "us-east-1"
+bucket         = "academic-linkage-terraform-state"
+key            = "infra/prod/terraform.tfstate"
+region         = "us-east-1"
+dynamodb_table = "academic-linkage-terraform-locks"
+encrypt        = true
