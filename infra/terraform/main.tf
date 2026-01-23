@@ -91,6 +91,8 @@ module "vpc_ms_b" {
   ]
 
   enable_nat_instance = true
+  nat_instance_type = "t3.micro"
+
   nat_key_name        = aws_key_pair.microservices_b.key_name
   admin_ssh_cidr      = var.cidr_bastion
 }
@@ -285,6 +287,22 @@ module "ms_api_gateway" {
   instance_count = 1
 }
 
+module "ms_user_service" {
+  source    = "./modules/microservice_ec2"
+  providers = { aws = aws.microservices_a }
+
+  name             = "user-service-${var.environment}"
+  instance_type    = "t3.micro"
+  key_name         = aws_key_pair.microservices_a.key_name
+  allowed_app_port = 8000
+
+  vpc_id            = module.vpc_ms_a.vpc_id
+  subnet_ids        = module.vpc_ms_a.private_subnet_ids
+  allowed_app_cidrs = local.internal_cidrs
+  bastion_cidr      = var.cidr_bastion
+  instance_count    = 1
+}
+
 module "ms_approval_service" {
   source    = "./modules/microservice_ec2"
   providers = { aws = aws.microservices_a }
@@ -325,7 +343,7 @@ module "ms_backup_service" {
   providers = { aws = aws.microservices_b }
 
   name             = "backup-service-${var.environment}"
-  instance_type    = "t3.micro"
+  instance_type = "t2.micro"
   key_name         = aws_key_pair.microservices_b.key_name
   allowed_app_port = 8000
 
@@ -357,7 +375,7 @@ module "ms_event_service" {
   providers = { aws = aws.microservices_b }
 
   name             = "event-service-${var.environment}"
-  instance_type    = "t3.micro"
+  instance_type = "t2.micro"
   key_name         = aws_key_pair.microservices_b.key_name
   allowed_app_port = 8000
 
@@ -373,7 +391,7 @@ module "ms_evidence_service" {
   providers = { aws = aws.microservices_b }
 
   name             = "evidence-service-${var.environment}"
-  instance_type    = "t3.micro"
+  instance_type = "t2.micro"
   key_name         = aws_key_pair.microservices_b.key_name
   allowed_app_port = 8000
 

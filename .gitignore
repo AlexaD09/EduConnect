@@ -1,4 +1,4 @@
-# --- Terraform ---
+
 **/.terraform/
 **/.terraform.lock.hcl
 **/terraform.tfstate
@@ -14,7 +14,7 @@
 !infra/terraform-eip/qa.tfvars
 !infra/terraform-eip/prod.tfvars
 
-# --- Secrets / Keys ---
+ 
 *.pem
 *.key
 *.p12
@@ -25,7 +25,7 @@
 **/secrets.*
 **/*credentials*
 
-# --- Node ---
+ 
 node_modules/
 dist/
 build/
@@ -39,18 +39,31 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# --- Python ---
+ 
 __pycache__/
 *.pyc
 .venv/
 venv/
 
-# --- OS / IDE ---
+ 
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
 
-# --- Docker ---
+ 
 **/data/
 **/volumes/
+
+**/*.auto.tfvars
+**/*secrets*.tfvars
+
+ 
+**/*.auto.tfvars
+**/*secrets*.tfvars
+ 
+**/terraform.tfstate
+**/terraform.tfstate.backup
+
+ 
+**/.terraform/

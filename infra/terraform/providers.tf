@@ -14,6 +14,14 @@ terraform {
 }
 
 provider "aws" {
+  region     = var.region
+  access_key = var.bastion_access_key
+  secret_key = var.bastion_secret_key
+  token      = var.bastion_session_token
+}
+
+
+provider "aws" {
   alias      = "frontend"
   region     = var.region
   access_key = var.frontend_access_key

@@ -4,9 +4,9 @@ output "environment" {
 
 
 data "aws_eip" "bastion" {
-  provider      = aws.bastion
-  allocation_id = var.bastion_eip_allocation_id
+  id = var.bastion_eip_allocation_id
 }
+
 
 output "bastion_public_ip" {
   value = data.aws_eip.bastion.public_ip
@@ -30,6 +30,8 @@ output "activity_private_ip"  { value = module.ms_activity_service.private_ips[0
 output "agreement_private_ip" { value = module.ms_agreement_service.private_ips[0] }
 output "approval_private_ip"  { value = module.ms_approval_service.private_ips[0] }
 output "audit_private_ip"     { value = module.ms_audit_service.private_ips[0] }
+output "user_private_ip" { value = module.ms_user_service.private_ips[0] }
+
 
 
 output "backup_private_ip"        { value = module.ms_backup_service.private_ips[0] }

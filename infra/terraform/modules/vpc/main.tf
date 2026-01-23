@@ -89,6 +89,8 @@ resource "aws_security_group" "nat" {
   name        = "${var.name}-nat-sg"
   description = "SG for NAT Instance"
   vpc_id      = aws_vpc.this.id
+  
+
 
   
   ingress {
@@ -140,6 +142,8 @@ resource "aws_instance" "nat" {
 
   associate_public_ip_address = true
   source_dest_check           = false
+  disable_api_termination              = true
+  instance_initiated_shutdown_behavior = "stop"
 
   user_data = <<-EOF
               #!/bin/bash
