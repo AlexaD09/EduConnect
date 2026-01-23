@@ -21,6 +21,11 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_BASTION_SECRET_ACCESS_KEY }}
           aws-session-token:     ${{ secrets.AWS_BASTION_SESSION_TOKEN }}
           aws-region: us-east-1
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.6
+   
 
       - name: Terraform apply (EIP)
         working-directory: infra/terraform-eip
