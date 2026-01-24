@@ -244,7 +244,7 @@ jobs:
 
       - name: Deploy frontend web
         run: |
-          TAG="${{ needs.set-env.outputs.env }}-latest"
+          TAG="latest"
           ssh -i /tmp/key.pem -o StrictHostKeyChecking=no ec2-user@${{ env.BASTION_IP }} "
             scp -i /tmp/jump.pem -o StrictHostKeyChecking=no /tmp/remote_prep.sh ec2-user@${{ env.FE_WEB_IP }}:/tmp/remote_prep.sh
             ssh -i /tmp/jump.pem -o StrictHostKeyChecking=no ec2-user@${{ env.FE_WEB_IP }} '
@@ -282,7 +282,7 @@ jobs:
 
       - name: Deploy api gateway
         run: |
-          TAG="${{ needs.set-env.outputs.env }}-latest"
+          TAG="latest"
           ssh -i /tmp/key.pem -o StrictHostKeyChecking=no ec2-user@${{ env.BASTION_IP }} "
             scp -i /tmp/jump.pem -o StrictHostKeyChecking=no /tmp/api-gw-nginx.conf ec2-user@${{ env.API_GW_IP }}:/tmp/nginx.conf
             scp -i /tmp/jump.pem -o StrictHostKeyChecking=no /tmp/remote_prep.sh ec2-user@${{ env.API_GW_IP }}:/tmp/remote_prep.sh
@@ -299,7 +299,7 @@ jobs:
 
       - name: Deploy db+services
         run: |
-          TAG="${{ needs.set-env.outputs.env }}-latest"
+          TAG="latest"
 
           scp -i /tmp/key.pem -o StrictHostKeyChecking=no -r packages/backend/user-service/db ec2-user@${{ env.BASTION_IP }}:/tmp/user-db-init
           scp -i /tmp/key.pem -o StrictHostKeyChecking=no -r packages/backend/activity-service/db ec2-user@${{ env.BASTION_IP }}:/tmp/activity-db-init
@@ -360,7 +360,7 @@ jobs:
 
       - name: Deploy remaining services
         run: |
-          TAG="${{ needs.set-env.outputs.env }}-latest"
+          TAG="latest"
 
           deploy_micro () {
             NAME="$1"; IP="$2"; IMAGE="$3"; EXTRA="$4"
