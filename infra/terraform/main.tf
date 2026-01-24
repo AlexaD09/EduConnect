@@ -961,7 +961,7 @@ module "peer_bastion_frontend" {
   requester_cidr = var.cidr_bastion
   accepter_cidr  = var.cidr_frontend
 
-  requester_route_table_id = module.vpc_bastion.private_route_table_id
+  requester_route_table_id = module.vpc_bastion.public_route_table_id
   accepter_route_table_id  = module.vpc_frontend.private_route_table_id
 
    depends_on = [
@@ -987,7 +987,7 @@ module "peer_bastion_ms_a" {
   requester_cidr = var.cidr_bastion
   accepter_cidr  = var.cidr_ms_a
 
-  requester_route_table_id = module.vpc_bastion.private_route_table_id
+  requester_route_table_id = module.vpc_bastion.public_route_table_id
   accepter_route_table_id  = module.vpc_ms_a.private_route_table_id
 
    depends_on = [
@@ -1014,7 +1014,7 @@ module "peer_bastion_ms_b" {
   requester_cidr = var.cidr_bastion
   accepter_cidr  = var.cidr_ms_b
 
-  requester_route_table_id = module.vpc_bastion.private_route_table_id
+  requester_route_table_id = module.vpc_bastion.public_route_table_id
   accepter_route_table_id  = module.vpc_ms_b.private_route_table_id
 
    depends_on = [
@@ -1040,7 +1040,7 @@ module "peer_bastion_data" {
   requester_cidr = var.cidr_bastion
   accepter_cidr  = var.cidr_data
 
-  requester_route_table_id = module.vpc_bastion.private_route_table_id
+  requester_route_table_id = module.vpc_bastion.public_route_table_id
   accepter_route_table_id  = module.vpc_data.private_route_table_id
 
    depends_on = [
