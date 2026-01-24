@@ -112,7 +112,7 @@ jobs:
       
       
 
-      - name: Terraform apply
+      - name: Terraform apply 
         run: terraform -chdir=infra/terraform apply -auto-approve -var-file=${{ needs.set-env.outputs.env }}.tfvars
 
       - name: Read outputs
