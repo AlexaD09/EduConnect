@@ -1,0 +1,7 @@
+{
+  "name": "document-service",
+  "scripts": {
+    "docker:build": "docker build -t alexa1209/document-service:latest .",
+    "docker:push": "docker push alexa1209/document-service:latest"
+  }
+}

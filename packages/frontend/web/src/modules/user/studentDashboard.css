@@ -1,0 +1,128 @@
+:root {
+  --navy-900: #061a33;
+  --navy-800: #0b2a52;
+  --navy-700: #123a72;
+  --navy-600: #1a4c92;
+
+  --bg-light: #f4f6fa;
+}
+
+/* Page background */
+.bg-light {
+  background-color: var(--bg-light) !important;
+}
+
+/* Navbar */
+.navbar.bg-primary {
+  background: linear-gradient(
+    180deg,
+    var(--navy-800),
+    var(--navy-900)
+  ) !important;
+  box-shadow: 0 4px 18px rgba(6, 26, 51, 0.35);
+}
+
+.navbar-brand {
+  font-weight: 800;
+  letter-spacing: 0.3px;
+}
+
+/* Cards */
+.card {
+  border-radius: 16px;
+  border: none;
+}
+
+.card-header {
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+/* Header colors */
+.card-header.bg-info {
+  background: linear-gradient(
+    180deg,
+    var(--navy-600),
+    var(--navy-700)
+  ) !important;
+}
+
+.card-header.bg-success {
+  background: linear-gradient(
+    180deg,
+    #1e7e34,
+    #155724
+  ) !important;
+}
+
+.card-header.bg-primary {
+  background: linear-gradient(
+    180deg,
+    var(--navy-700),
+    var(--navy-900)
+  ) !important;
+}
+
+/* Buttons */
+.btn-success {
+  background: linear-gradient(
+    180deg,
+    var(--navy-700),
+    var(--navy-900)
+  );
+  border: none;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  border-radius: 999px;
+  box-shadow: 0 12px 24px rgba(6, 26, 51, 0.35);
+}
+
+.btn-success:hover {
+  filter: brightness(1.05);
+}
+
+/* Status badge */
+.badge.bg-success {
+  background: linear-gradient(
+    180deg,
+    #2ecc71,
+    #1e7e34
+  );
+}
+
+/* Table */
+.table thead th {
+  background-color: var(--navy-900);
+  color: white;
+  border: none;
+}
+
+.table tbody tr:hover {
+  background-color: rgba(18, 58, 114, 0.06);
+}
+
+/* ===== LOGOUT BUTTON ICON (SIN TOCAR JSX) ===== */
+
+.navbar .nav-item button {
+  background: transparent;
+  border: none;
+  color: white;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+/* Icon before text */
+.navbar .nav-item button::before {
+  content: "⏻";
+  font-size: 1.1rem;
+  margin-right: 6px;
+  color: #ffdddd;
+}
+
+/* Hover effect */
+.navbar .nav-item button:hover {
+  color: #ffdddd;
+}

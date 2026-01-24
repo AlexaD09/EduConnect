@@ -3,7 +3,19 @@
   "pipeline": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": []
+      "outputs": [".next/**", "dist/**", "build/**"]
+    },
+    "deploy": {
+      "dependsOn": ["build"],
+      "cache": false
+    },
+    "docker:build": {
+      "outputs": [],
+      "cache": false
+    },
+    "docker:push": {
+      "dependsOn": ["docker:build"],
+      "cache": false
     }
   }
 }

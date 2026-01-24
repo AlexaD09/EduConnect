@@ -1,0 +1,7 @@
+{
+  "name": "frontend-mobile",
+  "scripts": {
+    "docker:build": "docker build -t alexa1209/frontend-mobile:latest .",
+    "docker:push": "docker push alexa1209/frontend-mobile:latest"
+  }
+}

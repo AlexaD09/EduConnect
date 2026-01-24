@@ -1,0 +1,7 @@
+{
+  "name": "frontend-desktop",
+  "scripts": {
+    "docker:build": "docker build -t alexa1209/frontend-desktop:latest .",
+    "docker:push": "docker push alexa1209/frontend-desktop:latest"
+  }
+}
