@@ -108,7 +108,7 @@ jobs:
           EOF
 
       - name: Terraform init
-        run: terraform -chdir=infra/terraform init -reconfigure -backend-config=${{ needs.set-env.outputs.backend }}
+        run: terraform -chdir=infra/terraform init -reconfigure
       
       
 
