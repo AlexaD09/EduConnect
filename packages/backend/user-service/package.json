@@ -1,0 +1,7 @@
+{
+  "name": "user-service",
+  "scripts": {
+    "docker:build": "docker build -t alexa1209/user-service:latest .",
+    "docker:push": "docker push alexa1209/user-service:latest"
+  }
+}

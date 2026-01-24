@@ -1,0 +1,7 @@
+{
+  "name": "evidence-service",
+  "scripts": {
+    "docker:build": "docker build -t alexa1209/evidence-service:latest .",
+    "docker:push": "docker push alexa1209/evidence-service:latest"
+  }
+}

@@ -1,0 +1,15 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# RNF8: Install dependencies for bcrypt
+RUN apt-get update && \
+    apt-get install -y build-essential libffi-dev libssl-dev && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+CMD ["sh", "-c", "python -m app.adapters.batch.batch_students && python -m app.adapters.batch.batch_agreements && uvicorn main:app --host 0.0.0.0 --port 8000"]
