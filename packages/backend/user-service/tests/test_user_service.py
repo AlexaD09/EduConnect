@@ -2,7 +2,7 @@ from unittest.mock import MagicMock
 from app.application.services.user_service import UserService
 
 def test_create_role_creates_when_missing():
-    """Objetivo: Crear un rol cuando no existe"""
+    
     db = MagicMock()
     db.query.return_value.filter_by.return_value.first.return_value = None
 
@@ -15,7 +15,7 @@ def test_create_role_creates_when_missing():
 
 
 def test_create_user_creates_user_and_role():
-    """Objetivo: Crear usuario y rol si no existen"""
+    
     db = MagicMock()
 
     role_query = MagicMock()
@@ -40,7 +40,7 @@ def test_create_user_creates_user_and_role():
 
 
 def test_create_role_returns_existing_role():
-    """Objetivo: Retornar el rol existente sin crear uno nuevo"""
+    
     db = MagicMock()
     existing_role = MagicMock()
     db.query.return_value.filter_by.return_value.first.return_value = existing_role
