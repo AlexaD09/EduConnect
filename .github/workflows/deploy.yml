@@ -106,17 +106,17 @@ jobs:
           bastion_secret_key     = "${{ secrets.AWS_BASTION_SECRET_ACCESS_KEY }}"
           bastion_session_token  = "${{ secrets.AWS_BASTION_SESSION_TOKEN }}"
           EOF
+      
+
+      - name: Terraform init
+        run: terraform -chdir=infra/terraform init -reconfigure
+      
       - name: Terraform validate
         run: terraform -chdir=infra/terraform validate
 
       - name: Terraform plan
         run: terraform -chdir=infra/terraform plan -input=false -var-file=${{ needs.set-env.outputs.env }}.tfvars
     
-
-      - name: Terraform init
-        run: terraform -chdir=infra/terraform init -reconfigure
-      
-      
 
       - name: Terraform apply 
         run: terraform -chdir=infra/terraform apply -auto-approve -var-file=${{ needs.set-env.outputs.env }}.tfvars
