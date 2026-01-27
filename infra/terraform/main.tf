@@ -41,7 +41,7 @@ module "vpc_frontend" {
 
   
   enable_nat_instance = true
-  nat_key_name        = aws_key_pair.frontend.key_name
+  nat_key_name        = aws_key_pair.shared.key_name
   admin_ssh_cidr      = var.cidr_bastion
 }
 
@@ -66,7 +66,7 @@ module "vpc_ms_a" {
   ]
 
   enable_nat_instance = true
-  nat_key_name        = aws_key_pair.microservices_a.key_name
+  nat_key_name        = aws_key_pair.shared.key_name
   admin_ssh_cidr      = var.cidr_bastion
 }
 
@@ -93,7 +93,7 @@ module "vpc_ms_b" {
   enable_nat_instance = true
   nat_instance_type = "t3.micro"
 
-  nat_key_name        = aws_key_pair.microservices_b.key_name
+  nat_key_name        = aws_key_pair.shared.key_name
   admin_ssh_cidr      = var.cidr_bastion
 }
 
@@ -117,7 +117,7 @@ module "vpc_data" {
   ]
 
   enable_nat_instance = true
-  nat_key_name        = aws_key_pair.data.key_name
+  nat_key_name        = aws_key_pair.shared.key_name
   admin_ssh_cidr      = var.cidr_bastion
 }
 
