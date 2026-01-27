@@ -109,7 +109,8 @@ jobs:
       
 
       - name: Terraform init
-        run: terraform -chdir=infra/terraform init -reconfigure
+        run: terraform -chdir=infra/terraform init -reconfigure -backend-config=backend-${{ needs.set-env.outputs.env }}.hcl
+
       
       - name: Terraform validate
         run: terraform -chdir=infra/terraform validate
