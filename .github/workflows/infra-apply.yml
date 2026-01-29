@@ -1,0 +1,133 @@
+name: Infra Apply (state -> eip -> infra)
+
+on:
+  push:
+    branches: [ features, qa, main ]
+  workflow_dispatch:
+
+concurrency:
+  group: infra-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  set-env:
+    runs-on: ubuntu-latest
+    outputs:
+      env: ${{ steps.env.outputs.env }}
+      backend: ${{ steps.env.outputs.backend }}
+      tfvars: ${{ steps.env.outputs.tfvars }}
+      eip_backend: ${{ steps.env.outputs.eip_backend }}
+      eip_tfvars: ${{ steps.env.outputs.eip_tfvars }}
+    steps:
+      - id: env
+        run: |
+          if [ "${GITHUB_REF_NAME}" = "main" ]; then
+            echo "env=prod" >> $GITHUB_OUTPUT
+            echo "backend=backend-prod.hcl" >> $GITHUB_OUTPUT
+            echo "tfvars=prod.tfvars" >> $GITHUB_OUTPUT
+            echo "eip_backend=backend-prod.hcl" >> $GITHUB_OUTPUT
+            echo "eip_tfvars=prod.tfvars" >> $GITHUB_OUTPUT
+          else
+            echo "env=qa" >> $GITHUB_OUTPUT
+            echo "backend=backend-qa.hcl" >> $GITHUB_OUTPUT
+            echo "tfvars=qa.tfvars" >> $GITHUB_OUTPUT
+            echo "eip_backend=backend-qa.hcl" >> $GITHUB_OUTPUT
+            echo "eip_tfvars=qa.tfvars" >> $GITHUB_OUTPUT
+          fi
+
+  apply:
+    needs: set-env
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.6
+
+      - name: Configure AWS creds (bastion account)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_BASTION_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_BASTION_SECRET_ACCESS_KEY }}
+          aws-session-token:     ${{ secrets.AWS_BASTION_SESSION_TOKEN }}
+          aws-region: us-east-1
+
+      # 1) CHECK + CREATE S3 STATE BUCKET (terraform-state) if missing
+      - name: Check if state bucket exists
+        run: |
+          if aws s3api head-bucket --bucket academic-linkage-terraform-state 2>/dev/null; then
+            echo "BUCKET_EXISTS=true" >> $GITHUB_ENV
+          else
+            echo "BUCKET_EXISTS=false" >> $GITHUB_ENV
+          fi
+
+      - name: Create state bucket (terraform-state) if missing
+        if: env.BUCKET_EXISTS == 'false'
+        run: |
+          cd infra/terraform-state
+          cat > secrets.auto.tfvars <<EOF
+          access_key     = "${{ secrets.AWS_BASTION_ACCESS_KEY_ID }}"
+          secret_key     = "${{ secrets.AWS_BASTION_SECRET_ACCESS_KEY }}"
+          session_token  = "${{ secrets.AWS_BASTION_SESSION_TOKEN }}"
+          EOF
+          terraform init
+          terraform apply -auto-approve -var-file=qa.tfvars
+
+      # 2) CREATE/ENSURE EIP (terraform-eip) using S3 backend
+      - name: Terraform EIP - write secrets
+        run: |
+          cd infra/terraform-eip
+          cat > secrets.auto.tfvars <<EOF
+          bastion_access_key    = "${{ secrets.AWS_BASTION_ACCESS_KEY_ID }}"
+          bastion_secret_key    = "${{ secrets.AWS_BASTION_SECRET_ACCESS_KEY }}"
+          bastion_session_token = "${{ secrets.AWS_BASTION_SESSION_TOKEN }}"
+          EOF
+
+      - name: Terraform EIP init (S3 backend)
+        run: terraform -chdir=infra/terraform-eip init -reconfigure -backend-config=${{ needs.set-env.outputs.eip_backend }}
+
+      - name: Terraform EIP apply
+        run: terraform -chdir=infra/terraform-eip apply -auto-approve -var-file=${{ needs.set-env.outputs.eip_tfvars }}
+
+      - name: Read EIP allocation id
+        id: eip
+        run: |
+          echo "ALLOC_ID=$(terraform -chdir=infra/terraform-eip output -raw bastion_eip_allocation_id)" >> $GITHUB_OUTPUT
+
+      # 3) APPLY INFRA (terraform) using S3 backend + pass EIP allocation id
+      - name: Write terraform secrets (multi-account)
+        run: |
+          cd infra/terraform
+          cat > secrets.auto.tfvars <<EOF
+          frontend_access_key    = "${{ secrets.AWS_FRONTEND_ACCESS_KEY_ID }}"
+          frontend_secret_key    = "${{ secrets.AWS_FRONTEND_SECRET_ACCESS_KEY }}"
+          frontend_session_token = "${{ secrets.AWS_FRONTEND_SESSION_TOKEN }}"
+
+          ms_a_access_key        = "${{ secrets.AWS_MS_A_ACCESS_KEY_ID }}"
+          ms_a_secret_key        = "${{ secrets.AWS_MS_A_SECRET_ACCESS_KEY }}"
+          ms_a_session_token     = "${{ secrets.AWS_MS_A_SESSION_TOKEN }}"
+
+          ms_b_access_key        = "${{ secrets.AWS_MS_B_ACCESS_KEY_ID }}"
+          ms_b_secret_key        = "${{ secrets.AWS_MS_B_SECRET_ACCESS_KEY }}"
+          ms_b_session_token     = "${{ secrets.AWS_MS_B_SESSION_TOKEN }}"
+
+          data_access_key        = "${{ secrets.AWS_DATABASES_ACCESS_KEY_ID }}"
+          data_secret_key        = "${{ secrets.AWS_DATABASES_SECRET_ACCESS_KEY }}"
+          data_session_token     = "${{ secrets.AWS_DATABASES_SESSION_TOKEN }}"
+
+          bastion_access_key     = "${{ secrets.AWS_BASTION_ACCESS_KEY_ID }}"
+          bastion_secret_key     = "${{ secrets.AWS_BASTION_SECRET_ACCESS_KEY }}"
+          bastion_session_token  = "${{ secrets.AWS_BASTION_SESSION_TOKEN }}"
+          EOF
+
+      - name: Terraform infra init (S3 backend)
+        run: terraform -chdir=infra/terraform init -reconfigure -backend-config=${{ needs.set-env.outputs.backend }}
+
+      - name: Terraform infra plan
+        run: terraform -chdir=infra/terraform plan -input=false -var-file=${{ needs.set-env.outputs.tfvars }} \
+          -var="bastion_eip_allocation_id=${{ steps.eip.outputs.ALLOC_ID }}"
+
+      - name: Terraform infra apply
+        run: terraform -chdir=infra/terraform apply -auto-approve -var-file=${{ needs.set-env.outputs.tfvars }} \
+          -var="bastion_eip_allocation_id=${{ steps.eip.outputs.ALLOC_ID }}"

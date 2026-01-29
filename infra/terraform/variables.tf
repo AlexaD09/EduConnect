@@ -112,5 +112,5 @@ variable "key_name" {
 variable "allowed_ssh_cidr" {
   type        = string
   description = "CIDR range allowed for SSH to bastion"
-  default     = "0.0.0.0/0"  # o el rango que quieras
+  default     = "0.0.0.0/0"  
 }

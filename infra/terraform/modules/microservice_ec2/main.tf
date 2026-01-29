@@ -54,7 +54,7 @@ resource "aws_instance" "microservice" {
   vpc_security_group_ids      = [aws_security_group.microservice_sg.id]
   key_name                    = var.key_name
   associate_public_ip_address = var.associate_public_ip
-  disable_api_termination              = true
+  disable_api_termination              = false
   instance_initiated_shutdown_behavior = "stop"
 
   user_data = var.user_data
