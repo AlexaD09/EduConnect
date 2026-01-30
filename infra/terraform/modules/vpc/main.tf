@@ -142,7 +142,7 @@ resource "aws_instance" "nat" {
 
   associate_public_ip_address = true
   source_dest_check           = false
-  disable_api_termination              = true
+  disable_api_termination              = false
   instance_initiated_shutdown_behavior = "stop"
 
   user_data = <<-EOF
