@@ -20,10 +20,7 @@ output "api_gateway_private_ip" {
   value = module.ms_api_gateway.private_ips[0]
 }
 
-output "ssh_private_key_pem" {
-  value     = tls_private_key.ssh.private_key_pem
-  sensitive = true
-}
+
 
 
 output "activity_private_ip"  { value = module.ms_activity_service.private_ips[0] }
