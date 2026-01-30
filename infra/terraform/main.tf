@@ -41,7 +41,7 @@ module "vpc_frontend" {
 
   
   enable_nat_instance = true
-  nat_key_name        = aws_key_pair.shared.key_name
+  nat_key_name        = var.ssh_key_name
   admin_ssh_cidr      = var.cidr_bastion
 }
 
@@ -66,7 +66,7 @@ module "vpc_ms_a" {
   ]
 
   enable_nat_instance = true
-  nat_key_name        = aws_key_pair.shared.key_name
+  nat_key_name        = var.ssh_key_name
   admin_ssh_cidr      = var.cidr_bastion
 }
 
@@ -93,7 +93,7 @@ module "vpc_ms_b" {
   enable_nat_instance = true
   nat_instance_type = "t3.micro"
 
-  nat_key_name        = aws_key_pair.shared.key_name
+  nat_key_name        = var.ssh_key_name
   admin_ssh_cidr      = var.cidr_bastion
 }
 
@@ -117,7 +117,7 @@ module "vpc_data" {
   ]
 
   enable_nat_instance = true
-  nat_key_name        = aws_key_pair.shared.key_name
+  nat_key_name        = var.ssh_key_name
   admin_ssh_cidr      = var.cidr_bastion
 }
 
@@ -159,7 +159,7 @@ module "bastion" {
   public_subnet_id = module.vpc_bastion.public_subnet_ids[0] 
   allowed_ssh_cidr = var.allowed_ssh_cidr 
   instance_type     = "t3.micro"
-  key_name = aws_key_pair.shared.key_name
+  key_name = var.ssh_key_name
 
   
   user_data = <<-EOF
@@ -189,7 +189,7 @@ module "frontend_web" {
 
   name             = "frontend-web-${var.environment}"
   instance_type    = "t3.micro"
-  key_name         = aws_key_pair.shared.key_name
+  key_name         = var.ssh_key_name
   allowed_app_port = 80
 
   vpc_id         = module.vpc_frontend.vpc_id
@@ -206,7 +206,7 @@ module "frontend_mobile" {
 
   name             = "frontend-mobile-${var.environment}"
   instance_type    = "t3.micro"
-  key_name         = aws_key_pair.shared.key_name
+  key_name         = var.ssh_key_name
   allowed_app_port = 80
 
   vpc_id         = module.vpc_frontend.vpc_id
@@ -223,7 +223,7 @@ module "frontend_desktop" {
 
   name             = "frontend-desktop-${var.environment}"
   instance_type    = "t3.micro"
-  key_name         = aws_key_pair.shared.key_name
+  key_name         = var.ssh_key_name
   allowed_app_port = 80
 
   vpc_id         = module.vpc_frontend.vpc_id
@@ -245,7 +245,7 @@ module "ms_activity_service" {
 
   name             = "activity-service-${var.environment}"
   instance_type    = "t3.micro"
-  key_name         = aws_key_pair.shared.key_name
+  key_name         = var.ssh_key_name
   allowed_app_port = 8000
 
   vpc_id         = module.vpc_ms_a.vpc_id
@@ -261,7 +261,7 @@ module "ms_agreement_service" {
 
   name             = "agreement-service-${var.environment}"
   instance_type    = "t3.micro"
-  key_name         = aws_key_pair.shared.key_name
+  key_name         = var.ssh_key_name
   allowed_app_port = 8000
 
   vpc_id         = module.vpc_ms_a.vpc_id
@@ -277,7 +277,7 @@ module "ms_api_gateway" {
 
   name             = "api-gateway-${var.environment}"
   instance_type    = "t3.micro"
-  key_name         = aws_key_pair.shared.key_name
+  key_name         = var.ssh_key_name
   allowed_app_port = 8000
 
   vpc_id         = module.vpc_ms_a.vpc_id
@@ -293,7 +293,7 @@ module "ms_user_service" {
 
   name             = "user-service-${var.environment}"
   instance_type    = "t3.micro"
-  key_name         = aws_key_pair.shared.key_name
+  key_name         = var.ssh_key_name
   allowed_app_port = 8000
 
   vpc_id            = module.vpc_ms_a.vpc_id
@@ -309,7 +309,7 @@ module "ms_approval_service" {
 
   name             = "approval-service-${var.environment}"
   instance_type    = "t3.micro"
-  key_name         = aws_key_pair.shared.key_name
+  key_name         = var.ssh_key_name
   allowed_app_port = 8000
 
   vpc_id         = module.vpc_ms_a.vpc_id
@@ -325,7 +325,7 @@ module "ms_audit_service" {
 
   name             = "audit-service-${var.environment}"
   instance_type    = "t3.micro"
-  key_name         = aws_key_pair.shared.key_name
+  key_name         = var.ssh_key_name
   allowed_app_port = 8000
 
   vpc_id         = module.vpc_ms_a.vpc_id
@@ -344,7 +344,7 @@ module "ms_backup_service" {
 
   name             = "backup-service-${var.environment}"
   instance_type = "t2.micro"
-  key_name         = aws_key_pair.shared.key_name
+  key_name         = var.ssh_key_name
   allowed_app_port = 8000
 
   vpc_id         = module.vpc_ms_b.vpc_id
@@ -360,7 +360,7 @@ module "ms_document_service" {
 
   name             = "document-service-${var.environment}"
   instance_type    = "t3.micro"
-  key_name         = aws_key_pair.shared.key_name
+  key_name         = var.ssh_key_name
   allowed_app_port = 8000
 
   vpc_id         = module.vpc_ms_b.vpc_id
@@ -376,7 +376,7 @@ module "ms_event_service" {
 
   name             = "event-service-${var.environment}"
   instance_type = "t2.micro"
-  key_name         = aws_key_pair.shared.key_name
+  key_name         = var.ssh_key_name
   allowed_app_port = 8000
 
   vpc_id         = module.vpc_ms_b.vpc_id
@@ -392,7 +392,7 @@ module "ms_evidence_service" {
 
   name             = "evidence-service-${var.environment}"
   instance_type = "t2.micro"
-  key_name         = aws_key_pair.shared.key_name
+  key_name         = var.ssh_key_name
   allowed_app_port = 8000
 
   vpc_id         = module.vpc_ms_b.vpc_id
@@ -408,7 +408,7 @@ module "ms_notification_service" {
 
   name             = "notification-service-${var.environment}"
   instance_type    = "t3.micro"
-  key_name         = aws_key_pair.shared.key_name
+  key_name         = var.ssh_key_name
   allowed_app_port = 8000
 
   vpc_id         = module.vpc_ms_b.vpc_id
@@ -428,7 +428,7 @@ module "data_postgres" {
 
   name             = "postgres-${var.environment}"
   instance_type    = "t3.micro"
-  key_name         = aws_key_pair.shared.key_name
+  key_name         = var.ssh_key_name
   allowed_app_port = 5432
 
   vpc_id         = module.vpc_data.vpc_id
@@ -448,7 +448,7 @@ module "data_redis" {
 
   name             = "redis-${var.environment}"
   instance_type    = "t3.micro"
-  key_name         = aws_key_pair.shared.key_name
+  key_name         = var.ssh_key_name
   allowed_app_port = 6379
 
   vpc_id         = module.vpc_data.vpc_id
@@ -465,7 +465,7 @@ module "data_kafka" {
 
   name             = "kafka-${var.environment}"
   instance_type    = "t3.micro"
-  key_name         = aws_key_pair.shared.key_name
+  key_name         = var.ssh_key_name
   allowed_app_port = 9092
 
   vpc_id         = module.vpc_data.vpc_id
@@ -483,7 +483,7 @@ module "data_mongo" {
 
   name             = "mongo-${var.environment}"
   instance_type    = "t3.micro"
-  key_name         = aws_key_pair.shared.key_name
+  key_name         = var.ssh_key_name
   allowed_app_port = 27017
 
   vpc_id            = module.vpc_data.vpc_id
@@ -499,7 +499,7 @@ module "data_rabbitmq" {
 
   name             = "rabbitmq-${var.environment}"
   instance_type    = "t3.micro"
-  key_name         = aws_key_pair.shared.key_name
+  key_name         = var.ssh_key_name
   allowed_app_port = 5672
 
   vpc_id            = module.vpc_data.vpc_id
@@ -515,7 +515,7 @@ module "data_mqtt" {
 
   name             = "mqtt-${var.environment}"
   instance_type    = "t3.micro"
-  key_name         = aws_key_pair.shared.key_name
+  key_name         = var.ssh_key_name
   allowed_app_port = 1883
 
   vpc_id            = module.vpc_data.vpc_id
@@ -531,7 +531,7 @@ module "data_n8n" {
 
   name             = "n8n-${var.environment}"
   instance_type    = "t3.micro"
-  key_name         = aws_key_pair.shared.key_name
+  key_name         = var.ssh_key_name
   allowed_app_port = 5678
 
   vpc_id            = module.vpc_data.vpc_id
@@ -555,7 +555,7 @@ module "prod_ms_a_activity_alb_asg" {
   public_subnet_ids   = module.vpc_ms_a.private_subnet_ids
   private_subnet_ids  = module.vpc_ms_a.private_subnet_ids
   instance_type       = "t3.micro"
-  key_name            = aws_key_pair.shared.key_name
+  key_name            = var.ssh_key_name
   allowed_http_cidr   = var.cidr_bastion
   bastion_cidr        = var.cidr_bastion
   internal            = true
@@ -572,7 +572,7 @@ module "prod_ms_a_agreement_alb_asg" {
   public_subnet_ids  = module.vpc_ms_a.private_subnet_ids
   private_subnet_ids = module.vpc_ms_a.private_subnet_ids
   instance_type      = "t3.micro"
-  key_name           = aws_key_pair.shared.key_name
+  key_name           = var.ssh_key_name
   allowed_http_cidr  = var.cidr_bastion
   bastion_cidr       = var.cidr_bastion
   internal           = true
@@ -589,7 +589,7 @@ module "prod_ms_a_apigw_alb_asg" {
   public_subnet_ids  = module.vpc_ms_a.private_subnet_ids
   private_subnet_ids = module.vpc_ms_a.private_subnet_ids
   instance_type      = "t3.micro"
-  key_name           = aws_key_pair.shared.key_name
+  key_name           = var.ssh_key_name
   allowed_http_cidr  = var.cidr_bastion
   bastion_cidr       = var.cidr_bastion
   internal           = true
@@ -606,7 +606,7 @@ module "prod_ms_a_approval_alb_asg" {
   public_subnet_ids  = module.vpc_ms_a.private_subnet_ids
   private_subnet_ids = module.vpc_ms_a.private_subnet_ids
   instance_type      = "t3.micro"
-  key_name           = aws_key_pair.shared.key_name
+  key_name           = var.ssh_key_name
   allowed_http_cidr  = var.cidr_bastion
   bastion_cidr       = var.cidr_bastion
   internal           = true
@@ -623,7 +623,7 @@ module "prod_ms_a_audit_alb_asg" {
   public_subnet_ids  = module.vpc_ms_a.private_subnet_ids
   private_subnet_ids = module.vpc_ms_a.private_subnet_ids
   instance_type      = "t3.micro"
-  key_name           = aws_key_pair.shared.key_name
+  key_name           = var.ssh_key_name
   allowed_http_cidr  = var.cidr_bastion
   bastion_cidr       = var.cidr_bastion
   internal           = true
@@ -640,7 +640,7 @@ module "prod_ms_b_backup_alb_asg" {
   public_subnet_ids  = module.vpc_ms_b.private_subnet_ids
   private_subnet_ids = module.vpc_ms_b.private_subnet_ids
   instance_type      = "t3.micro"
-  key_name           = aws_key_pair.shared.key_name
+  key_name           = var.ssh_key_name
   allowed_http_cidr  = var.cidr_bastion
   bastion_cidr       = var.cidr_bastion
   internal           = true
@@ -657,7 +657,7 @@ module "prod_ms_b_document_alb_asg" {
   public_subnet_ids  = module.vpc_ms_b.private_subnet_ids
   private_subnet_ids = module.vpc_ms_b.private_subnet_ids
   instance_type      = "t3.micro"
-  key_name           = aws_key_pair.shared.key_name
+  key_name           = var.ssh_key_name
   allowed_http_cidr  = var.cidr_bastion
   bastion_cidr       = var.cidr_bastion
   internal           = true
@@ -674,7 +674,7 @@ module "prod_ms_b_event_alb_asg" {
   public_subnet_ids  = module.vpc_ms_b.private_subnet_ids
   private_subnet_ids = module.vpc_ms_b.private_subnet_ids
   instance_type      = "t3.micro"
-  key_name           = aws_key_pair.shared.key_name
+  key_name           = var.ssh_key_name
   allowed_http_cidr  = var.cidr_bastion
   bastion_cidr       = var.cidr_bastion
   internal           = true
@@ -691,7 +691,7 @@ module "prod_ms_b_evidence_alb_asg" {
   public_subnet_ids  = module.vpc_ms_b.private_subnet_ids
   private_subnet_ids = module.vpc_ms_b.private_subnet_ids
   instance_type      = "t3.micro"
-  key_name           = aws_key_pair.shared.key_name
+  key_name           = var.ssh_key_name
   allowed_http_cidr  = var.cidr_bastion
   bastion_cidr       = var.cidr_bastion
   internal           = true
@@ -708,7 +708,7 @@ module "prod_ms_b_notification_alb_asg" {
   public_subnet_ids  = module.vpc_ms_b.private_subnet_ids
   private_subnet_ids = module.vpc_ms_b.private_subnet_ids
   instance_type      = "t3.micro"
-  key_name           = aws_key_pair.shared.key_name
+  key_name           = var.ssh_key_name
   allowed_http_cidr  = var.cidr_bastion
   bastion_cidr       = var.cidr_bastion
   internal           = true
@@ -728,7 +728,7 @@ module "prod_audit_alb_asg" {
   private_subnet_ids = module.vpc_ms_a.private_subnet_ids
 
   instance_type      = "t3.micro"
-  key_name           = aws_key_pair.shared.key_name
+  key_name           = var.ssh_key_name
 
   allowed_http_cidr  = var.cidr_bastion
   bastion_cidr       = var.cidr_bastion
@@ -751,7 +751,7 @@ module "prod_backup_alb_asg" {
   private_subnet_ids = module.vpc_ms_b.private_subnet_ids
 
   instance_type      = "t3.micro"
-  key_name           = aws_key_pair.shared.key_name
+  key_name           = var.ssh_key_name
 
   allowed_http_cidr  = var.cidr_bastion
   bastion_cidr       = var.cidr_bastion
@@ -771,7 +771,7 @@ module "prod_document_alb_asg" {
   private_subnet_ids = module.vpc_ms_b.private_subnet_ids
 
   instance_type      = "t3.micro"
-  key_name           = aws_key_pair.shared.key_name
+  key_name           = var.ssh_key_name
 
   allowed_http_cidr  = var.cidr_bastion
   bastion_cidr       = var.cidr_bastion
@@ -791,7 +791,7 @@ module "prod_event_alb_asg" {
   private_subnet_ids = module.vpc_ms_b.private_subnet_ids
 
   instance_type      = "t3.micro"
-  key_name           = aws_key_pair.shared.key_name
+  key_name           = var.ssh_key_name
 
   allowed_http_cidr  = var.cidr_bastion
   bastion_cidr       = var.cidr_bastion
@@ -811,7 +811,7 @@ module "prod_evidence_alb_asg" {
   private_subnet_ids = module.vpc_ms_b.private_subnet_ids
 
   instance_type      = "t3.micro"
-  key_name           = aws_key_pair.shared.key_name
+  key_name           = var.ssh_key_name
 
   allowed_http_cidr  = var.cidr_bastion
   bastion_cidr       = var.cidr_bastion
@@ -831,7 +831,7 @@ module "prod_notification_alb_asg" {
   private_subnet_ids = module.vpc_ms_b.private_subnet_ids
 
   instance_type      = "t3.micro"
-  key_name           = aws_key_pair.shared.key_name
+  key_name           = var.ssh_key_name
 
   allowed_http_cidr  = var.cidr_bastion
   bastion_cidr       = var.cidr_bastion
