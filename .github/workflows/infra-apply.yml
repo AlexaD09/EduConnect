@@ -75,17 +75,21 @@ jobs:
           terraform apply -auto-approve -var-file=qa.tfvars
 
       # 2) CREATE/ENSURE EIP (terraform-eip) using S3 backend
-      - name: Terraform EIP - write secrets
+      - name: Terraform EIP - write secrets (safe)
+        working-directory: infra/terraform-eip
         run: |
-          cd infra/terraform-eip
-          cat > secrets.auto.tfvars <<EOF
-          bastion_access_key    = "${{ secrets.AWS_BASTION_ACCESS_KEY_ID }}"
-          bastion_secret_key    = "${{ secrets.AWS_BASTION_SECRET_ACCESS_KEY }}"
-          bastion_session_token = "${{ secrets.AWS_BASTION_SESSION_TOKEN }}"
-          EOF
+          rm -f secrets.auto.tfvars
+          {
+            echo 'bastion_access_key    = "${{ secrets.AWS_BASTION_ACCESS_KEY_ID }}"'
+            echo 'bastion_secret_key    = "${{ secrets.AWS_BASTION_SECRET_ACCESS_KEY }}"'
+            echo 'bastion_session_token = "${{ secrets.AWS_BASTION_SESSION_TOKEN }}"'
+          } > secrets.auto.tfvars
+          ls -la
+          echo "---- backend-qa.hcl ----"
+          cat backend-qa.hcl
 
-      - name: Terraform EIP init (S3 backend)
-        run: terraform -chdir=infra/terraform-eip init -reconfigure -backend-config=${{ needs.set-env.outputs.eip_backend }}
+      - name: Terraform EIP init 
+        run: terraform -chdir=infra/terraform-eip init -input=false -reconfigure -backend-config=infra/terraform-eip/backend-qa.hcl
 
       - name: Terraform EIP apply
         run: terraform -chdir=infra/terraform-eip apply -auto-approve -var-file=${{ needs.set-env.outputs.eip_tfvars }}
