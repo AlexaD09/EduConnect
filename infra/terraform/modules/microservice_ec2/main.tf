@@ -52,7 +52,7 @@ resource "aws_instance" "microservice" {
   instance_type               = var.instance_type
   subnet_id                   = var.subnet_ids[count.index % length(var.subnet_ids)]
   vpc_security_group_ids      = [aws_security_group.microservice_sg.id]
-  key_name                    = var.ssh_key_name
+  key_name                    = var.key_name
   associate_public_ip_address = var.associate_public_ip
   disable_api_termination              = false
   instance_initiated_shutdown_behavior = "stop"
