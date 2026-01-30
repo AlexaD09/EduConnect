@@ -129,9 +129,8 @@ jobs:
         run: terraform -chdir=infra/terraform init -reconfigure -backend-config=${{ needs.set-env.outputs.backend }}
 
       - name: Terraform infra plan
-        run: terraform -chdir=infra/terraform plan -input=false -var-file=${{ needs.set-env.outputs.tfvars }} \
-          -var="bastion_eip_allocation_id=${{ steps.eip.outputs.ALLOC_ID }}"
+        run: terraform -chdir=infra/terraform plan -input=false -var-file=${{ needs.set-env.outputs.tfvars }} -var="bastion_eip_allocation_id=${{ steps.eip.outputs.ALLOC_ID }}"
 
       - name: Terraform infra apply
-        run: terraform -chdir=infra/terraform apply -auto-approve -var-file=${{ needs.set-env.outputs.tfvars }} \
-          -var="bastion_eip_allocation_id=${{ steps.eip.outputs.ALLOC_ID }}"
+        run: terraform -chdir=infra/terraform apply -auto-approve -var-file=${{ needs.set-env.outputs.tfvars }} -var="bastion_eip_allocation_id=${{ steps.eip.outputs.ALLOC_ID }}"
+
