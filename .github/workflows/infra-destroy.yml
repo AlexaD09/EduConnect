@@ -1,0 +1,76 @@
+name: Infra Destroy (infra only)
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_env:
+        description: "Environment to destroy"
+        required: true
+        type: choice
+        options: [features,qa, prod]
+
+concurrency:
+  group: infra-destroy-${{ inputs.target_env }}
+  cancel-in-progress: false
+
+jobs:
+  destroy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.6
+
+      - name: Configure AWS creds (bastion account)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_BASTION_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_BASTION_SECRET_ACCESS_KEY }}
+          aws-session-token:     ${{ secrets.AWS_BASTION_SESSION_TOKEN }}
+          aws-region: us-east-1
+
+      - name: Set env files
+        id: env
+        run: |
+          if [ "${{ inputs.target_env }}" = "prod" ]; then
+            echo "backend=backend-prod.hcl" >> $GITHUB_OUTPUT
+            echo "tfvars=prod.tfvars" >> $GITHUB_OUTPUT
+            echo "ssh_pub=${{ secrets.SSH_PUBLIC_KEY_PROD }}" >> $GITHUB_OUTPUT
+          else
+            echo "backend=backend-qa.hcl" >> $GITHUB_OUTPUT
+            echo "tfvars=qa.tfvars" >> $GITHUB_OUTPUT
+            echo "ssh_pub=${{ secrets.SSH_PUBLIC_KEY_QA }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Write terraform secrets (multi-account)
+        run: |
+          cd infra/terraform
+          cat > secrets.auto.tfvars <<EOF
+          frontend_access_key    = "${{ secrets.AWS_FRONTEND_ACCESS_KEY_ID }}"
+          frontend_secret_key    = "${{ secrets.AWS_FRONTEND_SECRET_ACCESS_KEY }}"
+          frontend_session_token = "${{ secrets.AWS_FRONTEND_SESSION_TOKEN }}"
+
+          ms_a_access_key        = "${{ secrets.AWS_MS_A_ACCESS_KEY_ID }}"
+          ms_a_secret_key        = "${{ secrets.AWS_MS_A_SECRET_ACCESS_KEY }}"
+          ms_a_session_token     = "${{ secrets.AWS_MS_A_SESSION_TOKEN }}"
+
+          ms_b_access_key        = "${{ secrets.AWS_MS_B_ACCESS_KEY_ID }}"
+          ms_b_secret_key        = "${{ secrets.AWS_MS_B_SECRET_ACCESS_KEY }}"
+          ms_b_session_token     = "${{ secrets.AWS_MS_B_SESSION_TOKEN }}"
+
+          data_access_key        = "${{ secrets.AWS_DATABASES_ACCESS_KEY_ID }}"
+          data_secret_key        = "${{ secrets.AWS_DATABASES_SECRET_ACCESS_KEY }}"
+          data_session_token     = "${{ secrets.AWS_DATABASES_SESSION_TOKEN }}"
+
+          bastion_access_key     = "${{ secrets.AWS_BASTION_ACCESS_KEY_ID }}"
+          bastion_secret_key     = "${{ secrets.AWS_BASTION_SECRET_ACCESS_KEY }}"
+          bastion_session_token  = "${{ secrets.AWS_BASTION_SESSION_TOKEN }}"
+          EOF
+
+      - name: Terraform infra init (S3 backend)
+        run: terraform -chdir=infra/terraform init -reconfigure -backend-config=${{ steps.env.outputs.backend }}
+
+      - name: Terraform infra destroy
+        run: terraform -chdir=infra/terraform destroy -auto-approve -var-file=${{ steps.env.outputs.tfvars }} -var="ssh_public_key=${{ steps.env.outputs.ssh_pub }}"
