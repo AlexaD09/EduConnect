@@ -20,6 +20,10 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.out.outputs.tag }}
+      env_alias: ${{ steps.out.outputs.env_alias }}
+      services: ${{ steps.out.outputs.services }}
 
     steps:
       - uses: actions/checkout@v4
@@ -27,7 +31,6 @@ jobs:
           fetch-depth: 0
 
       - name: Set tag and env alias
-        id: meta
         run: |
           if [ "${GITHUB_REF_NAME}" = "main" ]; then
             echo "TAG=prod-${GITHUB_SHA::7}" >> $GITHUB_ENV
@@ -38,7 +41,6 @@ jobs:
           fi
 
       - name: Detect changed services
-        id: changes
         run: |
           BASE="${{ github.event.before }}"
           if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
@@ -57,12 +59,19 @@ jobs:
           echo "CHANGED=true" >> $GITHUB_ENV
           printf '%s\n' "$SERVICES" > .services.txt
 
+      - name: Export outputs
+        id: out
+        if: env.CHANGED == 'true'
+        run: |
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "env_alias=$ENV_ALIAS" >> $GITHUB_OUTPUT
+          echo "services=$(paste -sd' ' .services.txt)" >> $GITHUB_OUTPUT
+
       - uses: actions/setup-node@v4
-        if: env.CHANGED == 'true' 
+        if: env.CHANGED == 'true'
         with:
           node-version: 20
-          
-      
+
       - name: Docker login
         if: env.CHANGED == 'true'
         run: |
@@ -82,18 +91,12 @@ jobs:
             cd - >/dev/null
           done < .services.txt
 
-
-      - name: Write deploy manifest (single file)
-        if: env.CHANGED == 'true'
-        run: |
-          mkdir -p .artifacts
-          SERVICES_JSON=$(awk 'BEGIN{printf "["} {gsub(/"/,""); printf "%s\"%s\"", (NR==1?"":","), $0} END{printf "]"}' .services.txt)
-          echo "{ \"services\": $SERVICES_JSON, \"tag\": \"${TAG}\", \"env\": \"${ENV_ALIAS}\" }" > .artifacts/manifest.json
-
-      - name: Upload manifest
-        if: env.CHANGED == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: deploy-manifest
-          path: .artifacts/manifest.json
-          if-no-files-found: error
+  deploy:
+    needs: build
+    if: ${{ needs.build.outputs.services != '' }}
+    uses: ./.github/workflows/deploy.yml
+    with:
+      tag: ${{ needs.build.outputs.tag }}
+      env_alias: ${{ needs.build.outputs.env_alias }}
+      services: ${{ needs.build.outputs.services }}
+    secrets: inherit

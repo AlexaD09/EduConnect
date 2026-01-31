@@ -1,46 +1,41 @@
 name: CD Deploy (only changed services)
 
 on:
-  workflow_run:
-    workflows: ["CI Build + Push (only changed services)"]
-    types: [completed]
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+      env_alias:
+        required: true
+        type: string
+      services:
+        required: true
+        type: string
 
 concurrency:
-  group: cd-${{ github.event.workflow_run.head_branch }}
+  group: cd-${{ inputs.env_alias }}
   cancel-in-progress: true
-
 
 jobs:
   deploy:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ github.event.workflow_run.head_sha }}
 
-      - uses: actions/download-artifact@v4
-        with:
-          name: deploy-manifest
-          run-id: ${{ github.event.workflow_run.id }}
-          path: .artifacts
-
-      - name: Set env (from manifest + branch)
+      - name: Set TF backend/vars from env_alias
         run: |
-          BRANCH="${{ github.event.workflow_run.head_branch }}"
-          echo "BRANCH=$BRANCH" >> $GITHUB_ENV
+          echo "TAG=${{ inputs.tag }}" >> $GITHUB_ENV
+          echo "ENV_ALIAS=${{ inputs.env_alias }}" >> $GITHUB_ENV
+          echo "SERVICES=${{ inputs.services }}" >> $GITHUB_ENV
 
-          TAG=$(python3 -c "import json; print(json.load(open('.artifacts/manifest.json'))['tag'])")
-          echo "TAG=$TAG" >> $GITHUB_ENV
-
-          if [ "$BRANCH" = "main" ]; then
-            echo "ENV_ALIAS=prod" >> $GITHUB_ENV
+          if [ "${{ inputs.env_alias }}" = "prod" ]; then
             echo "TF_BACKEND=backend-prod.hcl" >> $GITHUB_ENV
             echo "TFVARS=prod.tfvars" >> $GITHUB_ENV
           else
-            echo "ENV_ALIAS=qa" >> $GITHUB_ENV
             echo "TF_BACKEND=backend-qa.hcl" >> $GITHUB_ENV
             echo "TFVARS=qa.tfvars" >> $GITHUB_ENV
           fi
@@ -78,10 +73,6 @@ jobs:
           DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
           BASTION_HOST: ${{ steps.bastion.outputs.HOST }}
         run: |
-          MANIFEST="$(cat .artifacts/manifest.json)"
-          SERVICES=$(echo "$MANIFEST" | python3 -c "import sys,json; print(' '.join(json.load(sys.stdin)['services']))")
-          TAG=$(echo "$MANIFEST" | python3 -c "import sys,json; print(json.load(sys.stdin)['tag'])")
-
           ENDPOINTS_JSON=$(terraform -chdir=infra/terraform output -json service_endpoints)
 
           for SVC in $SERVICES; do
