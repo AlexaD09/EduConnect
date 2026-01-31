@@ -6,7 +6,7 @@ It follows a hexagonal architecture, separating domain logic, application use ca
 
 ## Responsibilities
 - User authentication and JWT generation
-- Student an coordinator information queries
+- Student and coordinator information queries
 - Agreement listing and agreement detail queries
 - Service health check 
 
