@@ -72,6 +72,8 @@ jobs:
         if: env.CHANGED == 'true'
         env:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          TAG: ${{ env.TAG }}
+          ENV_ALIAS: ${{ env.ENV_ALIAS }}
         run: |
           while read -r SVC; do
             cd "packages/backend/$SVC"
@@ -79,6 +81,7 @@ jobs:
             npm run docker:push
             cd - >/dev/null
           done < .services.txt
+
 
       - name: Write deploy manifest (single file)
         if: env.CHANGED == 'true'
