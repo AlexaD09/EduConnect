@@ -13,7 +13,7 @@ It follows a hexagonal architecture, separating domain logic, application use ca
 ## Architecture
 - Architecture style: Hexagonal (Ports & Adapters)
 - Communication: Internal REST API
-- Default port: 8000
+- Default port:8000
 
 ## Tech Stack
 - Python
