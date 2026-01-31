@@ -57,7 +57,7 @@ jobs:
           printf '%s\n' "$SERVICES" > .services.txt
 
       - uses: actions/setup-node@v4
-        if: env.CHANGED == 'true'
+        if: env.CHANGED == 'true' 
         with:
           node-version: 20
           
