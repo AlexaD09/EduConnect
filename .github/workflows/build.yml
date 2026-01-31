@@ -14,7 +14,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: ci-${{ github.ref_name }}
+  group: cd-${{ github.ref_name }}-${{ inputs.env_alias }}
   cancel-in-progress: true
 
 jobs:

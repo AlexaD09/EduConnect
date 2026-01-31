@@ -11,7 +11,7 @@ Activity Service registers student activities with entry/exit photos, stores the
 - Update activity status (approve/reject) via internal endpoint
 
 ## Tech Stack
-- FastAPI
+- FastAPI 
 - PostgreSQL
 - File storage volume (Docker volume)
 

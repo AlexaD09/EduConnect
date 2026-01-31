@@ -63,7 +63,7 @@ jobs:
       - name: Prepare SSH key
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY_QA }}" > ~/.ssh/id_rsa
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY_QA }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H "${{ steps.bastion.outputs.HOST }}" >> ~/.ssh/known_hosts
 
@@ -81,7 +81,8 @@ jobs:
 
             IMAGE="${DOCKERHUB_USERNAME}/${SVC}:${TAG}"
 
-            ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=yes -J ec2-user@"$BASTION_HOST" ec2-user@"$IP" "bash -lc '
+            ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -J ec2-user@"$BASTION_HOST" ec2-user@"$IP" "bash -lc ' ... '"
+
               set -e
               if ! command -v docker >/dev/null 2>&1; then
                 sudo yum -y update
