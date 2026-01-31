@@ -45,7 +45,7 @@ output "mongo_private_ip"    { value = module.data_mongo.private_ips[0] }
 output "rabbit_private_ip"   { value = module.data_rabbitmq.private_ips[0] }
 output "mqtt_private_ip"     { value = module.data_mqtt.private_ips[0] }
 output "n8n_private_ip"      { value = module.data_n8n.private_ips[0] }
-
+ 
 output "service_endpoints" {
   value = {
     "frontend-web"        = { ip = module.frontend_web.private_ips[0],            port = 80 }
