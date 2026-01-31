@@ -60,8 +60,7 @@ jobs:
         if: env.CHANGED == 'true'
         with:
           node-version: 20
-          cache: "npm"
-
+          
       - name: Install deps
         if: env.CHANGED == 'true'
         run: npm ci

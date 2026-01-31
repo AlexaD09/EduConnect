@@ -56,10 +56,20 @@ jobs:
           aws-session-token:     ${{ secrets.AWS_BASTION_SESSION_TOKEN }}
           aws-region: us-east-1
 
-      # 1) CHECK + CREATE S3 STATE BUCKET (terraform-state) if missing
+      
       - name: Check if state bucket exists
         run: |
-          if aws s3api head-bucket --bucket academic-linkage-terraform-state 2>/dev/null; then
+          set +e
+          aws s3api head-bucket --bucket academic-linkage-terraform-state 2>/dev/null
+          RC=$?
+          set -e
+
+          if [ "$RC" -eq 0 ]; then
+            echo "BUCKET_EXISTS=true" >> $GITHUB_ENV
+            exit 0
+          fi
+
+          if aws s3api list-buckets --query "Buckets[?Name=='academic-linkage-terraform-state'].Name" --output text 2>/dev/null | grep -q academic-linkage-terraform-state; then
             echo "BUCKET_EXISTS=true" >> $GITHUB_ENV
           else
             echo "BUCKET_EXISTS=false" >> $GITHUB_ENV
@@ -75,9 +85,10 @@ jobs:
           session_token  = "${{ secrets.AWS_BASTION_SESSION_TOKEN }}"
           EOF
           terraform init
-          terraform apply -auto-approve -var-file=qa.tfvars
+          terraform apply -auto-approve -var-file=${{ needs.set-env.outputs.tfvars }}
 
-      # 2) CREATE/ENSURE EIP (terraform-eip) using S3 backend
+
+         
       - name: Terraform EIP - write secrets (safe)
         working-directory: infra/terraform-eip
         run: |
@@ -102,7 +113,7 @@ jobs:
         run: |
           echo "ALLOC_ID=$(terraform -chdir=infra/terraform-eip output -raw bastion_eip_allocation_id)" >> $GITHUB_OUTPUT
 
-      # 3) APPLY INFRA (terraform) using S3 backend + pass EIP allocation id
+      
       - name: Write terraform secrets (multi-account)
         run: |
           cd infra/terraform
