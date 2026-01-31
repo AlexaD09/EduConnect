@@ -1,7 +1,9 @@
 {
   "name": "user-service",
+  "version": "1.0.0",
+  "private": true,
   "scripts": {
-    "docker:build": "docker build -t alexa1209/user-service:latest .",
-    "docker:push": "docker push alexa1209/user-service:latest"
+    "docker:build": "node -e \"const s=require('./package.json').name; const u=process.env.DOCKERHUB_USERNAME; const tag=process.env.TAG; const env=process.env.ENV_ALIAS; require('child_process').execSync(`docker build -t ${u}/${s}:${tag} -t ${u}/${s}:${env} .`,{stdio:'inherit'})\"",
+    "docker:push": "node -e \"const s=require('./package.json').name; const u=process.env.DOCKERHUB_USERNAME; const tag=process.env.TAG; const env=process.env.ENV_ALIAS; require('child_process').execSync(`docker push ${u}/${s}:${tag} && docker push ${u}/${s}:${env}`,{stdio:'inherit'})\""
   }
 }

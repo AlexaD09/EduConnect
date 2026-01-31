@@ -1,0 +1,102 @@
+name: CD Deploy (only changed services)
+
+on:
+  workflow_run:
+    workflows: ["CI Build + Push (only changed services)"]
+    types: [completed]
+
+concurrency:
+  group: cd-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: deploy-manifest
+          run-id: ${{ github.event.workflow_run.id }}
+          path: .artifacts
+
+      - name: Set env
+        run: |
+          TAG=$(cat .artifacts/tag.txt)
+          ENV_ALIAS=$(cat .artifacts/env_alias.txt)
+          echo "TAG=$TAG" >> $GITHUB_ENV
+          echo "ENV_ALIAS=$ENV_ALIAS" >> $GITHUB_ENV
+          if [ "$ENV_ALIAS" = "prod" ]; then
+            echo "TF_BACKEND=backend-prod.hcl" >> $GITHUB_ENV
+            echo "TFVARS=prod.tfvars" >> $GITHUB_ENV
+          else
+            echo "TF_BACKEND=backend-qa.hcl" >> $GITHUB_ENV
+            echo "TFVARS=qa.tfvars" >> $GITHUB_ENV
+          fi
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.6
+
+      - name: Configure AWS creds (bastion account)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_BASTION_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_BASTION_SECRET_ACCESS_KEY }}
+          aws-session-token:     ${{ secrets.AWS_BASTION_SESSION_TOKEN }}
+          aws-region: us-east-1
+
+      - name: Terraform init (read outputs)
+        run: terraform -chdir=infra/terraform init -reconfigure -backend-config=$TF_BACKEND
+
+      - name: Get bastion public ip
+        id: bastion
+        run: |
+          echo "HOST=$(terraform -chdir=infra/terraform output -raw bastion_public_ip)" >> $GITHUB_OUTPUT
+
+      - name: Prepare SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY_QA }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "${{ steps.bastion.outputs.HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Deploy changed services (real)
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
+          BASTION_HOST: ${{ steps.bastion.outputs.HOST }}
+        run: |
+          MANIFEST="$(cat .artifacts/manifest.json)"
+          SERVICES=$(echo "$MANIFEST" | python3 -c "import sys,json; print(' '.join(json.load(sys.stdin)['services']))")
+          TAG=$(echo "$MANIFEST" | python3 -c "import sys,json; print(json.load(sys.stdin)['tag'])")
+
+          ENDPOINTS_JSON=$(terraform -chdir=infra/terraform output -json service_endpoints)
+
+          for SVC in $SERVICES; do
+            IP=$(echo "$ENDPOINTS_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['$SVC']['ip'])")
+            PORT=$(echo "$ENDPOINTS_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['$SVC']['port'])")
+
+            IMAGE="${DOCKERHUB_USERNAME}/${SVC}:${TAG}"
+
+            ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=yes -J ec2-user@"$BASTION_HOST" ec2-user@"$IP" "bash -lc '
+              set -e
+              if ! command -v docker >/dev/null 2>&1; then
+                sudo yum -y update
+                sudo amazon-linux-extras install -y docker || sudo yum -y install docker
+                sudo systemctl enable --now docker
+              else
+                sudo systemctl enable --now docker
+              fi
+              echo \"$DOCKERHUB_PASSWORD\" | sudo docker login -u \"$DOCKERHUB_USERNAME\" --password-stdin
+              sudo docker pull \"$IMAGE\"
+              sudo docker rm -f \"$SVC\" >/dev/null 2>&1 || true
+              sudo docker run -d --name \"$SVC\" --restart unless-stopped -p \"$PORT:$PORT\" \"$IMAGE\"
+              sudo docker image prune -af >/dev/null 2>&1 || true
+            '"
+          done
