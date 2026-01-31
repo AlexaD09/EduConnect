@@ -1,38 +1,33 @@
 # User Service
 
 ## Overview
-User Service provides authentication and user-related queries. It is implemented with a hexagonal structure (adapters + application use cases).
+The User Service is responsible for authentication and user-related queries within the Academic Linkage platform.  
+It follows a hexagonal architecture, separating domain logic, application use cases, and infrastructure adapters.
 
 ## Responsibilities
-- User login (JWT issuance)
-- User/student/coordinator lookup endpoints
-- Agreement listing and agreement details queries
+- User authentication and JWT generation
+- Student and coordinator information queries
+- Agreement listing and agreement detail queries
+- Service health check
+
+## Architecture
+- Architecture style: Hexagonal (Ports & Adapters)
+- Communication: Internal REST API
+- Default port: 8000
 
 ## Tech Stack
+- Python
 - FastAPI
 - PostgreSQL
+- Docker
+- JWT Authentication
 
-## Environment Variables (Docker Compose)
-- `DB_HOST`
-- `DB_PORT`
-- `DB_NAME`
-- `DB_USER`
-- `DB_PASSWORD`
+## Environment Variables
+The following environment variables are required when running the service:
 
-## API Endpoints
-Base (internal): `http://user-service:8000`
-
-- `POST /login`
-- `GET /students/{student_id}`
-- `GET /students/by-username/{username}`
-- `GET /coordinators/by-username/{username}`
-- `GET /agreements`
-- `GET /agreements/{agreement_id}`
-- `GET /health`
-
-## Run
-- `docker compose up -d --build`
-- Swagger: `http://localhost:8000/api/users/docs` (via gateway prefix) or `http://localhost:8000/docs` (inside container network)
-
-## Notes
-The gateway maps `/api/users/` to this service.
+```env
+DB_HOST
+DB_PORT
+DB_NAME
+DB_USER
+DB_PASSWORD
