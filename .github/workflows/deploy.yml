@@ -81,20 +81,22 @@ jobs:
 
             IMAGE="${DOCKERHUB_USERNAME}/${SVC}:${TAG}"
 
-            ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -J ec2-user@"$BASTION_HOST" ec2-user@"$IP" "bash -lc ' ... '"
+            ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+              -J ec2-user@"$BASTION_HOST" ec2-user@"$IP" <<EOF
+          set -e
+          if ! command -v docker >/dev/null 2>&1; then
+            sudo yum -y update
+            sudo amazon-linux-extras install -y docker || sudo yum -y install docker
+            sudo systemctl enable --now docker
+          else
+            sudo systemctl enable --now docker
+          fi
 
-              set -e
-              if ! command -v docker >/dev/null 2>&1; then
-                sudo yum -y update
-                sudo amazon-linux-extras install -y docker || sudo yum -y install docker
-                sudo systemctl enable --now docker
-              else
-                sudo systemctl enable --now docker
-              fi
-              echo \"$DOCKERHUB_PASSWORD\" | sudo docker login -u \"$DOCKERHUB_USERNAME\" --password-stdin
-              sudo docker pull \"$IMAGE\"
-              sudo docker rm -f \"$SVC\" >/dev/null 2>&1 || true
-              sudo docker run -d --name \"$SVC\" --restart unless-stopped -p \"$PORT:$PORT\" \"$IMAGE\"
-              sudo docker image prune -af >/dev/null 2>&1 || true
-            '"
+          echo "$DOCKERHUB_PASSWORD" | sudo docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+          sudo docker pull "$IMAGE"
+          sudo docker rm -f "$SVC" >/dev/null 2>&1 || true
+          sudo docker run -d --name "$SVC" --restart unless-stopped -p "$PORT:$PORT" "$IMAGE"
+          sudo docker image prune -af >/dev/null 2>&1 || true
+          EOF
+
           done
