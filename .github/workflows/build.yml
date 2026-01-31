@@ -62,10 +62,7 @@ jobs:
         with:
           node-version: 20
           
-      - name: Install deps
-        if: env.CHANGED == 'true'
-        run: npm ci
-
+      
       - name: Docker login
         if: env.CHANGED == 'true'
         run: |
