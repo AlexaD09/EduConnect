@@ -6,8 +6,9 @@ on:
     types: [completed]
 
 concurrency:
-  group: cd-${{ github.ref_name }}
+  group: cd-${{ github.event.workflow_run.head_branch }}
   cancel-in-progress: true
+
 
 jobs:
   deploy:
@@ -15,9 +16,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4 
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - uses: actions/download-artifact@v4
         with:
@@ -25,16 +27,20 @@ jobs:
           run-id: ${{ github.event.workflow_run.id }}
           path: .artifacts
 
-      - name: Set env
+      - name: Set env (from manifest + branch)
         run: |
-          TAG=$(cat .artifacts/tag.txt)
-          ENV_ALIAS=$(cat .artifacts/env_alias.txt)
+          BRANCH="${{ github.event.workflow_run.head_branch }}"
+          echo "BRANCH=$BRANCH" >> $GITHUB_ENV
+
+          TAG=$(python3 -c "import json; print(json.load(open('.artifacts/manifest.json'))['tag'])")
           echo "TAG=$TAG" >> $GITHUB_ENV
-          echo "ENV_ALIAS=$ENV_ALIAS" >> $GITHUB_ENV
-          if [ "$ENV_ALIAS" = "prod" ]; then
+
+          if [ "$BRANCH" = "main" ]; then
+            echo "ENV_ALIAS=prod" >> $GITHUB_ENV
             echo "TF_BACKEND=backend-prod.hcl" >> $GITHUB_ENV
             echo "TFVARS=prod.tfvars" >> $GITHUB_ENV
           else
+            echo "ENV_ALIAS=qa" >> $GITHUB_ENV
             echo "TF_BACKEND=backend-qa.hcl" >> $GITHUB_ENV
             echo "TFVARS=qa.tfvars" >> $GITHUB_ENV
           fi
