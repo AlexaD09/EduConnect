@@ -10,6 +10,7 @@ on:
       - "package-lock.json"
       - "pnpm-lock.yaml"
       - "yarn.lock"
+      - ".github/workflows/build.yml"
   workflow_dispatch:
 
 concurrency:
