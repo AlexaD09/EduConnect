@@ -36,3 +36,13 @@ variable "requester_route_table_id" {
 variable "accepter_route_table_id" {
   type = string
 }
+
+variable "requester_route_table_ids" {
+  type    = list(string)
+  default = []
+}
+
+variable "accepter_route_table_ids" {
+  type    = list(string)
+  default = []
+}
