@@ -60,12 +60,18 @@ jobs:
         run: |
           echo "HOST=$(terraform -chdir=infra/terraform output -raw bastion_public_ip)" >> $GITHUB_OUTPUT
 
+      - name: Test SSH to bastion
+        run: |
+          ssh -vvv -i ~/.ssh/id_rsa -o IdentitiesOnly=yes ec2-user@"${{ steps.bastion.outputs.HOST }}" "whoami && hostname"
+    
+
       - name: Prepare SSH key
         run: |
           mkdir -p ~/.ssh
-          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY_QA }}" > ~/.ssh/id_rsa
+          echo "${{ secrets.SSH_PRIVATE_KEY_QA }}" | tr -d '\r' > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H "${{ steps.bastion.outputs.HOST }}" >> ~/.ssh/known_hosts
+
 
       - name: Deploy changed services (real)
         env:
