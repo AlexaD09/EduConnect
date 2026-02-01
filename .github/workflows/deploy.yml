@@ -61,7 +61,7 @@ jobs:
           echo "HOST=$(terraform -chdir=infra/terraform output -raw bastion_public_ip)" >> $GITHUB_OUTPUT
 
      
-      - name: Prepare SSH key
+      - name: Prepare SSH key for bastion
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY_QA }}" | tr -d '\r' > ~/.ssh/id_rsa
@@ -70,9 +70,11 @@ jobs:
           chmod 644 ~/.ssh/known_hosts
 
 
+
       - name: Test SSH to bastion
         run: |
           ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes ec2-user@44.213.10.36 "whoami && hostname"
+
 
 
       
