@@ -60,19 +60,32 @@ jobs:
         run: |
           echo "HOST=$(terraform -chdir=infra/terraform output -raw bastion_public_ip)" >> $GITHUB_OUTPUT
 
-     
       - name: Prepare SSH key
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY_QA }}" | tr -d '\r' > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H 44.213.10.36 >> ~/.ssh/known_hosts
 
+      - name: Push public key to bastion (EC2 Instance Connect)
+        run: |
+          INSTANCE_ID=$(aws ec2 describe-instances \
+            --filters "Name=tag:Name,Values=*bastion*" "Name=instance-state-name,Values=running" \
+            --query "Reservations[0].Instances[0].InstanceId" --output text)
 
+          AZ=$(aws ec2 describe-instances \
+            --instance-ids "$INSTANCE_ID" \
+            --query "Reservations[0].Instances[0].Placement.AvailabilityZone" --output text)
+
+          aws ec2-instance-connect send-ssh-public-key \
+            --instance-id "$INSTANCE_ID" \
+            --availability-zone "$AZ" \
+            --instance-os-user ec2-user \
+            --ssh-public-key "${{ secrets.SSH_PUBLIC_KEY_QA }}"
 
       - name: Test SSH to bastion
         run: |
-          ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes ec2-user@44.213.10.36 "whoami && hostname"
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa -o IdentitiesOnly=yes ec2-user@44.213.10.36 "whoami && hostname"
+
 
 
 
