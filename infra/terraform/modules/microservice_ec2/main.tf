@@ -9,6 +9,7 @@ terraform {
 
 resource "aws_security_group" "microservice_sg" {
   vpc_id = var.vpc_id
+  
 
   ingress {
     description = "SSH from Bastion"
@@ -33,6 +34,12 @@ resource "aws_security_group" "microservice_sg" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
+     tags = {
+    Name = "${var.name}-sg"
+  }
+
+
 }
 
 
