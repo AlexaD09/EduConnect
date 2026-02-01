@@ -41,6 +41,10 @@ resource "aws_route" "requester_to_accepter" {
   route_table_id            = each.value
   destination_cidr_block    = var.accepter_cidr
   vpc_peering_connection_id = aws_vpc_peering_connection.this.id
+  timeouts {
+    create = "5m"
+    delete = "20m"
+  }
 }
 
 resource "aws_route" "accepter_to_requester" {
@@ -49,6 +53,10 @@ resource "aws_route" "accepter_to_requester" {
   route_table_id            = each.value
   destination_cidr_block    = var.requester_cidr
   vpc_peering_connection_id = aws_vpc_peering_connection.this.id
+  timeouts {
+    create = "5m"
+    delete = "20m"
+  }
 }
 
 
