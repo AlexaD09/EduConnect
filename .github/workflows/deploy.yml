@@ -111,29 +111,26 @@ jobs:
             echo "Service=$SVC IP=$IP"
 
             
-            INSTANCE_ID=$(aws ec2 describe-instances \
-              --filters "Name=private-ip-address,Values=$IP" "Name=instance-state-name,Values=running" \
-              --query "Reservations[0].Instances[0].InstanceId" --output text 2>/dev/null || true)
+            SVC_TF=$(echo "$SVC" | tr '-' '_')
 
            
-            if [ -z "$INSTANCE_ID" ] || [ "$INSTANCE_ID" = "None" ]; then
-              INSTANCE_ID=$(aws ec2 describe-instances \
-                --filters "Name=tag:Name,Values=${SVC}-${ENV_ALIAS}-*" "Name=instance-state-name,Values=running" \
-                --query "Reservations[0].Instances[0].InstanceId" --output text)
-            fi
+            ADDR=$(terraform -chdir=infra/terraform state list | grep -E "ms_${SVC_TF}|${SVC_TF}" | head -n 1)
 
-           
-            if [ -z "$INSTANCE_ID" ] || [ "$INSTANCE_ID" = "None" ]; then
-              echo "ERROR: Could not resolve instance id for $SVC (IP=$IP)."
-              echo "ENDPOINTS_JSON=$ENDPOINTS_JSON"
+            if [ -z "$ADDR" ]; then
+              echo "ERROR: Could not find terraform state address for $SVC (pattern ms_${SVC_TF} / ${SVC_TF})"
+              terraform -chdir=infra/terraform state list | grep -i "$SVC_TF" || true
               exit 1
             fi
 
-            AZ=$(aws ec2 describe-instances \
-              --instance-ids "$INSTANCE_ID" \
-              --query "Reservations[0].Instances[0].Placement.AvailabilityZone" --output text)
+            INSTANCE_ID=$(terraform -chdir=infra/terraform state show -no-color "$ADDR" | awk '/^id *=/ {print $3; exit}')
+            AZ=$(terraform -chdir=infra/terraform state show -no-color "$ADDR" | awk '/availability_zone/ {print $3; exit}')
 
-            echo "Pushing SSH key to $SVC ($IP) -> $INSTANCE_ID in $AZ"
+            if [ -z "$INSTANCE_ID" ] || [ "$INSTANCE_ID" = "None" ]; then
+              echo "ERROR: Could not extract instance id from terraform state for $SVC ($ADDR)"
+              exit 1
+            fi
+
+            echo "Pushing SSH key to $SVC ($IP) -> $INSTANCE_ID in $AZ via terraform state ($ADDR)"
 
             aws ec2-instance-connect send-ssh-public-key \
               --instance-id "$INSTANCE_ID" \
@@ -141,7 +138,6 @@ jobs:
               --instance-os-user ec2-user \
               --ssh-public-key "${{ secrets.SSH_PUBLIC_KEY_QA }}"
           done
-
 
 
       
