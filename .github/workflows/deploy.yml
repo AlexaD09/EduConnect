@@ -103,20 +103,29 @@ jobs:
           echo "=== key_name in state for ms_user_service ==="
           terraform -chdir=infra/terraform state show module.ms_user_service.aws_instance.microservice[0] | sed -n '1,120p' | grep -E "key_name|ami|subnet_id|private_ip|tags"
 
-      - name: Push public key to target instances (EIC + per-account creds)
+      - name: Push public key to target instances (EIC + read state with bastion creds)
         env:
+          # bastion creds (for reading terraform remote state in S3)
+          AWS_BASTION_ACCESS_KEY_ID: ${{ secrets.AWS_BASTION_ACCESS_KEY_ID }}
+          AWS_BASTION_SECRET_ACCESS_KEY: ${{ secrets.AWS_BASTION_SECRET_ACCESS_KEY }}
+          AWS_BASTION_SESSION_TOKEN: ${{ secrets.AWS_BASTION_SESSION_TOKEN }}
+
+          # Frontend account
           AWS_FRONTEND_ACCESS_KEY_ID: ${{ secrets.AWS_FRONTEND_ACCESS_KEY_ID }}
           AWS_FRONTEND_SECRET_ACCESS_KEY: ${{ secrets.AWS_FRONTEND_SECRET_ACCESS_KEY }}
           AWS_FRONTEND_SESSION_TOKEN: ${{ secrets.AWS_FRONTEND_SESSION_TOKEN }}
 
+          # Databases account
           AWS_DATABASES_ACCESS_KEY_ID: ${{ secrets.AWS_DATABASES_ACCESS_KEY_ID }}
           AWS_DATABASES_SECRET_ACCESS_KEY: ${{ secrets.AWS_DATABASES_SECRET_ACCESS_KEY }}
           AWS_DATABASES_SESSION_TOKEN: ${{ secrets.AWS_DATABASES_SESSION_TOKEN }}
 
+          # Microservices A account
           AWS_MS_A_ACCESS_KEY_ID: ${{ secrets.AWS_MS_A_ACCESS_KEY_ID }}
           AWS_MS_A_SECRET_ACCESS_KEY: ${{ secrets.AWS_MS_A_SECRET_ACCESS_KEY }}
           AWS_MS_A_SESSION_TOKEN: ${{ secrets.AWS_MS_A_SESSION_TOKEN }}
 
+          # Microservices B account
           AWS_MS_B_ACCESS_KEY_ID: ${{ secrets.AWS_MS_B_ACCESS_KEY_ID }}
           AWS_MS_B_SECRET_ACCESS_KEY: ${{ secrets.AWS_MS_B_SECRET_ACCESS_KEY }}
           AWS_MS_B_SESSION_TOKEN: ${{ secrets.AWS_MS_B_SESSION_TOKEN }}
@@ -124,15 +133,40 @@ jobs:
           SSH_PUBLIC_KEY_QA: ${{ secrets.SSH_PUBLIC_KEY_QA }}
         run: |
           set -e
-          terraform -chdir=infra/terraform init -reconfigure -backend-config=$TF_BACKEND
 
+          # --- Force Terraform to use BASTION creds (S3 state access) ---
+          export AWS_ACCESS_KEY_ID="$AWS_BASTION_ACCESS_KEY_ID"
+          export AWS_SECRET_ACCESS_KEY="$AWS_BASTION_SECRET_ACCESS_KEY"
+          export AWS_SESSION_TOKEN="$AWS_BASTION_SESSION_TOKEN"
+          export AWS_REGION=us-east-1
+          export AWS_DEFAULT_REGION=us-east-1
+
+          terraform -chdir=infra/terraform init -reconfigure -backend-config=$TF_BACKEND
           ENDPOINTS_JSON=$(terraform -chdir=infra/terraform output -json service_endpoints)
 
           for SVC in $SERVICES; do
             IP=$(echo "$ENDPOINTS_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('$SVC', {}).get('ip'))")
             echo "Service=$SVC IP=$IP"
 
-            # --- choose AWS creds by IP range ---
+            # --- Get INSTANCE_ID + AZ from terraform state while still on BASTION creds ---
+            SVC_TF=$(echo "$SVC" | tr '-' '_')
+            ADDR=$(terraform -chdir=infra/terraform state list | grep -E "^module\.ms_${SVC_TF}\.aws_instance\.microservice\[0\]$" | head -n 1)
+
+            if [ -z "$ADDR" ]; then
+              echo "ERROR: Could not find instance state address for service=$SVC"
+              terraform -chdir=infra/terraform state list | grep -E "module\.ms_${SVC_TF}\." || true
+              exit 1
+            fi
+
+            INSTANCE_ID=$(terraform -chdir=infra/terraform state show -no-color "$ADDR" | awk -F' = ' '/^[[:space:]]*id[[:space:]]*=/{gsub(/"/,"",$2); print $2; exit}')
+            AZ=$(terraform -chdir=infra/terraform state show -no-color "$ADDR" | awk -F' = ' '/^[[:space:]]*availability_zone[[:space:]]*=/{gsub(/"/,"",$2); print $2; exit}')
+
+            if [ -z "$INSTANCE_ID" ] || [ -z "$AZ" ]; then
+              echo "ERROR: Failed to extract INSTANCE_ID/AZ from terraform state ($ADDR)"
+              exit 1
+            fi
+
+            # --- NOW switch AWS creds ONLY for EC2 Instance Connect call ---
             if echo "$IP" | grep -qE '^10\.20\.'; then
               export AWS_ACCESS_KEY_ID="$AWS_MS_A_ACCESS_KEY_ID"
               export AWS_SECRET_ACCESS_KEY="$AWS_MS_A_SECRET_ACCESS_KEY"
@@ -161,37 +195,19 @@ jobs:
             export AWS_REGION=us-east-1
             export AWS_DEFAULT_REGION=us-east-1
 
-            # --- find the exact EC2 instance address in terraform state ---
-            SVC_TF=$(echo "$SVC" | tr '-' '_')
-
-            ADDR=$(terraform -chdir=infra/terraform state list \
-              | grep -E "^module\.ms_${SVC_TF}\.aws_instance\.microservice\[0\]$" \
-              | head -n 1)
-
-            if [ -z "$ADDR" ]; then
-              echo "ERROR: Could not find instance state address for service=$SVC"
-              echo "DEBUG: candidates:"
-              terraform -chdir=infra/terraform state list | grep -E "module\.ms_${SVC_TF}\." || true
-              exit 1
-            fi
-
-            INSTANCE_ID=$(terraform -chdir=infra/terraform state show -no-color "$ADDR" | awk -F' = ' '/^[[:space:]]*id[[:space:]]*=/{gsub(/"/,"",$2); print $2; exit}')
-            AZ=$(terraform -chdir=infra/terraform state show -no-color "$ADDR" | awk -F' = ' '/^[[:space:]]*availability_zone[[:space:]]*=/{gsub(/"/,"",$2); print $2; exit}')
-
-            if [ -z "$INSTANCE_ID" ] || [ -z "$AZ" ]; then
-              echo "ERROR: Failed to extract INSTANCE_ID/AZ from terraform state ($ADDR)"
-              terraform -chdir=infra/terraform state show -no-color "$ADDR" | head -n 120
-              exit 1
-            fi
-
-            echo "Pushing SSH key to $SVC -> $INSTANCE_ID in $AZ (ADDR=$ADDR)"
-
+            echo "Pushing SSH key to $SVC -> $INSTANCE_ID in $AZ"
             aws ec2-instance-connect send-ssh-public-key \
               --instance-id "$INSTANCE_ID" \
               --availability-zone "$AZ" \
               --instance-os-user ec2-user \
               --ssh-public-key "$SSH_PUBLIC_KEY_QA"
+
+            # --- switch back to BASTION creds for next terraform state read ---
+            export AWS_ACCESS_KEY_ID="$AWS_BASTION_ACCESS_KEY_ID"
+            export AWS_SECRET_ACCESS_KEY="$AWS_BASTION_SECRET_ACCESS_KEY"
+            export AWS_SESSION_TOKEN="$AWS_BASTION_SESSION_TOKEN"
           done
+
 
 
       - name: Deploy changed services 
