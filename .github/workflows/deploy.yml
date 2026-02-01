@@ -103,9 +103,34 @@ jobs:
           echo "=== key_name in state for ms_user_service ==="
           terraform -chdir=infra/terraform state show module.ms_user_service.aws_instance.microservice[0] | sed -n '1,120p' | grep -E "key_name|ami|subnet_id|private_ip|tags"
 
-      - name: Push public key to target instances (EC2 Instance Connect)
+      - name: Push public key to target instances (EIC + per-account creds)
         env:
-          BASTION_HOST: ${{ steps.bastion.outputs.HOST }}
+           
+          AWS_BASTION_ACCESS_KEY_ID: ${{ secrets.AWS_BASTION_ACCESS_KEY_ID }}
+          AWS_BASTION_SECRET_ACCESS_KEY: ${{ secrets.AWS_BASTION_SECRET_ACCESS_KEY }}
+          AWS_BASTION_SESSION_TOKEN: ${{ secrets.AWS_BASTION_SESSION_TOKEN }}
+
+          
+          AWS_FRONTEND_ACCESS_KEY_ID: ${{ secrets.AWS_FRONTEND_ACCESS_KEY_ID }}
+          AWS_FRONTEND_SECRET_ACCESS_KEY: ${{ secrets.AWS_FRONTEND_SECRET_ACCESS_KEY }}
+          AWS_FRONTEND_SESSION_TOKEN: ${{ secrets.AWS_FRONTEND_SESSION_TOKEN }}
+
+           
+          AWS_DATABASES_ACCESS_KEY_ID: ${{ secrets.AWS_DATABASES_ACCESS_KEY_ID }}
+          AWS_DATABASES_SECRET_ACCESS_KEY: ${{ secrets.AWS_DATABASES_SECRET_ACCESS_KEY }}
+          AWS_DATABASES_SESSION_TOKEN: ${{ secrets.AWS_DATABASES_SESSION_TOKEN }}
+
+           
+          AWS_MS_A_ACCESS_KEY_ID: ${{ secrets.AWS_MS_A_ACCESS_KEY_ID }}
+          AWS_MS_A_SECRET_ACCESS_KEY: ${{ secrets.AWS_MS_A_SECRET_ACCESS_KEY }}
+          AWS_MS_A_SESSION_TOKEN: ${{ secrets.AWS_MS_A_SESSION_TOKEN }}
+
+           
+          AWS_MS_B_ACCESS_KEY_ID: ${{ secrets.AWS_MS_B_ACCESS_KEY_ID }}
+          AWS_MS_B_SECRET_ACCESS_KEY: ${{ secrets.AWS_MS_B_SECRET_ACCESS_KEY }}
+          AWS_MS_B_SESSION_TOKEN: ${{ secrets.AWS_MS_B_SESSION_TOKEN }}
+
+          SSH_PUBLIC_KEY_QA: ${{ secrets.SSH_PUBLIC_KEY_QA }}
         run: |
           set -e
           ENDPOINTS_JSON=$(terraform -chdir=infra/terraform output -json service_endpoints)
@@ -114,24 +139,54 @@ jobs:
             IP=$(echo "$ENDPOINTS_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('$SVC', {}).get('ip'))")
             echo "Service=$SVC IP=$IP"
 
+            # ---- Choose AWS creds by IP prefix ----
+            if echo "$IP" | grep -qE '^10\.20\.'; then
+              export AWS_ACCESS_KEY_ID="$AWS_MS_A_ACCESS_KEY_ID"
+              export AWS_SECRET_ACCESS_KEY="$AWS_MS_A_SECRET_ACCESS_KEY"
+              export AWS_SESSION_TOKEN="$AWS_MS_A_SESSION_TOKEN"
+              echo "Using account: MS_A"
+            elif echo "$IP" | grep -qE '^10\.30\.'; then
+              export AWS_ACCESS_KEY_ID="$AWS_MS_B_ACCESS_KEY_ID"
+              export AWS_SECRET_ACCESS_KEY="$AWS_MS_B_SECRET_ACCESS_KEY"
+              export AWS_SESSION_TOKEN="$AWS_MS_B_SESSION_TOKEN"
+              echo "Using account: MS_B"
+            elif echo "$IP" | grep -qE '^10\.10\.'; then
+              export AWS_ACCESS_KEY_ID="$AWS_FRONTEND_ACCESS_KEY_ID"
+              export AWS_SECRET_ACCESS_KEY="$AWS_FRONTEND_SECRET_ACCESS_KEY"
+              export AWS_SESSION_TOKEN="$AWS_FRONTEND_SESSION_TOKEN"
+              echo "Using account: FRONTEND"
+            elif echo "$IP" | grep -qE '^10\.40\.'; then
+              export AWS_ACCESS_KEY_ID="$AWS_DATABASES_ACCESS_KEY_ID"
+              export AWS_SECRET_ACCESS_KEY="$AWS_DATABASES_SECRET_ACCESS_KEY"
+              export AWS_SESSION_TOKEN="$AWS_DATABASES_SESSION_TOKEN"
+              echo "Using account: DATABASES"
+            else
+              echo "ERROR: Unknown IP range for $SVC: $IP"
+              exit 1
+            fi
+
+            export AWS_REGION=us-east-1
+            export AWS_DEFAULT_REGION=us-east-1
+
+            # ---- Get instance id + AZ from Terraform state (fast + reliable) ----
             SVC_TF=$(echo "$SVC" | tr '-' '_')
             ADDR="module.ms_${SVC_TF}.aws_instance.microservice[0]"
 
-            terraform -chdir=infra/terraform state show -no-color "$ADDR" >/dev/null 2>&1 || { 
-              echo "ERROR: $ADDR not found in terraform state"; 
-              exit 1; 
+            terraform -chdir=infra/terraform state show -no-color "$ADDR" >/dev/null 2>&1 || {
+              echo "ERROR: $ADDR not found in terraform state"
+              exit 1
             }
 
             INSTANCE_ID=$(terraform -chdir=infra/terraform state show -no-color "$ADDR" | awk -F' = ' '/^[[:space:]]*id[[:space:]]*=/{gsub(/"/,"",$2); print $2; exit}')
             AZ=$(terraform -chdir=infra/terraform state show -no-color "$ADDR" | awk -F' = ' '/^[[:space:]]*availability_zone[[:space:]]*=/{gsub(/"/,"",$2); print $2; exit}')
 
-            echo "Pushing SSH key to $SVC ($IP) -> $INSTANCE_ID in $AZ"
+            echo "Pushing SSH key to $SVC -> $INSTANCE_ID in $AZ"
 
             aws ec2-instance-connect send-ssh-public-key \
               --instance-id "$INSTANCE_ID" \
               --availability-zone "$AZ" \
               --instance-os-user ec2-user \
-              --ssh-public-key "${{ secrets.SSH_PUBLIC_KEY_QA }}"
+              --ssh-public-key "$SSH_PUBLIC_KEY_QA"
           done
 
       
