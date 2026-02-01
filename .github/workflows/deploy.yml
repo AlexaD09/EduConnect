@@ -122,8 +122,8 @@ jobs:
               exit 1; 
             }
 
-            INSTANCE_ID=$(terraform -chdir=infra/terraform state show -no-color "$ADDR" | awk '/^id *=/ {print $3; exit}')
-            AZ=$(terraform -chdir=infra/terraform state show -no-color "$ADDR" | awk '/availability_zone/ {print $3; exit}')
+            INSTANCE_ID=$(terraform -chdir=infra/terraform state show -no-color "$ADDR" | awk -F' = ' '/^[[:space:]]*id[[:space:]]*=/{gsub(/"/,"",$2); print $2; exit}')
+            AZ=$(terraform -chdir=infra/terraform state show -no-color "$ADDR" | awk -F' = ' '/^[[:space:]]*availability_zone[[:space:]]*=/{gsub(/"/,"",$2); print $2; exit}')
 
             echo "Pushing SSH key to $SVC ($IP) -> $INSTANCE_ID in $AZ"
 
