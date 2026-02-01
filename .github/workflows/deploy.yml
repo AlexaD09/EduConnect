@@ -99,6 +99,13 @@ jobs:
           BASTION_HOST: ${{ steps.bastion.outputs.HOST }}
         run: |
           ENDPOINTS_JSON=$(terraform -chdir=infra/terraform output -json service_endpoints)
+          ssh-keyscan -H "$BASTION_HOST" >> ~/.ssh/known_hosts
+
+          for SVC in $SERVICES; do
+            IP=$(echo "$ENDPOINTS_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['$SVC']['ip'])")
+            ssh-keyscan -H "$IP" >> ~/.ssh/known_hosts
+          done
+          chmod 644 ~/.ssh/known_hosts
 
           for SVC in $SERVICES; do
             IP=$(echo "$ENDPOINTS_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['$SVC']['ip'])")
@@ -123,5 +130,4 @@ jobs:
           sudo docker run -d --name "$SVC" --restart unless-stopped -p "$PORT:$PORT" "$IMAGE"
           sudo docker image prune -af >/dev/null 2>&1 || true
           EOF
-
           done
