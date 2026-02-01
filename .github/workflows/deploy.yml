@@ -105,35 +105,34 @@ jobs:
           for SVC in $SERVICES; do
             IP=$(echo "$ENDPOINTS_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['$SVC']['ip'])")
 
+            INSTANCE_ID=$(aws ec2 describe-instances \
+              --filters "Name=private-ip-address,Values=$IP" \
+              --query "Reservations[0].Instances[0].InstanceId" --output text)
+
+            if [ "$INSTANCE_ID" = "None" ] || [ -z "$INSTANCE_ID" ]; then
+              echo "Could not find instance for $SVC ($IP)"
+              continue
+            fi
+
+            SUBNET_ID=$(aws ec2 describe-instances \
+              --instance-ids "$INSTANCE_ID" \
+              --query "Reservations[0].Instances[0].SubnetId" --output text)
+
+            VPC_ID=$(aws ec2 describe-instances \
+              --instance-ids "$INSTANCE_ID" \
+              --query "Reservations[0].Instances[0].VpcId" --output text)
+
+            SG_IDS=$(aws ec2 describe-instances \
+              --instance-ids "$INSTANCE_ID" \
+              --query "Reservations[0].Instances[0].SecurityGroups[].GroupId" --output text)
+
+            echo "TARGET IP=$IP INSTANCE_ID=$INSTANCE_ID VPC=$VPC_ID SUBNET=$SUBNET_ID SGs=$SG_IDS"
+            echo "Route table for subnet $SUBNET_ID:"
+            aws ec2 describe-route-tables \
+              --filters "Name=association.subnet-id,Values=$SUBNET_ID" \
+              --query "RouteTables[0].Routes" --output table
+
             echo "Testing SSH port 22 from bastion to $SVC ($IP)"
             ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa -o IdentitiesOnly=yes ec2-user@"$BASTION_HOST" \
-              "timeout 4 bash -lc 'echo >/dev/tcp/$IP/22' && echo PORT22_OPEN || echo PORT22_BLOCKED"
-          done
-
-          done
-          chmod 644 ~/.ssh/known_hosts
-
-          for SVC in $SERVICES; do
-            IP=$(echo "$ENDPOINTS_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['$SVC']['ip'])")
-            PORT=$(echo "$ENDPOINTS_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['$SVC']['port'])")
-
-            IMAGE="${DOCKERHUB_USERNAME}/${SVC}:${TAG}"
-
-            ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
-              -J ec2-user@"$BASTION_HOST" ec2-user@"$IP" <<EOF
-          set -e
-          if ! command -v docker >/dev/null 2>&1; then
-            sudo yum -y update
-            sudo amazon-linux-extras install -y docker || sudo yum -y install docker
-            sudo systemctl enable --now docker
-          else
-            sudo systemctl enable --now docker
-          fi
-
-          echo "$DOCKERHUB_PASSWORD" | sudo docker login -u "$DOCKERHUB_USERNAME" --password-stdin
-          sudo docker pull "$IMAGE"
-          sudo docker rm -f "$SVC" >/dev/null 2>&1 || true
-          sudo docker run -d --name "$SVC" --restart unless-stopped -p "$PORT:$PORT" "$IMAGE"
-          sudo docker image prune -af >/dev/null 2>&1 || true
-          EOF
+              "timeout 4 bash -lc 'echo >/dev/tcp/$IP/22' && echo PORT22_OPEN || echo PORT22_BLOCKED" || true
           done
