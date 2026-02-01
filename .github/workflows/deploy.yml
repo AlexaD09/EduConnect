@@ -92,7 +92,7 @@ jobs:
 
       
 
-      - name: Deploy changed services (real)
+      - name: Deploy changed services 
         env:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
@@ -100,24 +100,20 @@ jobs:
         run: |
           ENDPOINTS_JSON=$(terraform -chdir=infra/terraform output -json service_endpoints)
 
-          ssh-keyscan -H "$BASTION_HOST" >> ~/.ssh/known_hosts
-          chmod 644 ~/.ssh/known_hosts
+          
+          TARGET_USER="ec2-user"
 
           for SVC in $SERVICES; do
             IP=$(echo "$ENDPOINTS_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['$SVC']['ip'])")
             PORT=$(echo "$ENDPOINTS_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['$SVC']['port'])")
 
-            
-            ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes -o StrictHostKeyChecking=no \
-              ec2-user@"$BASTION_HOST" "ssh-keyscan -H $IP 2>/dev/null" >> ~/.ssh/known_hosts
-
             IMAGE="${DOCKERHUB_USERNAME}/${SVC}:${TAG}"
 
-            ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
-              -J ec2-user@"$BASTION_HOST" ec2-user@"$IP" <<EOF
+            ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes -o StrictHostKeyChecking=no \
+              -J ec2-user@"$BASTION_HOST" "$TARGET_USER@$IP" <<EOF
           set -e
           if ! command -v docker >/dev/null 2>&1; then
-            sudo yum -y update
+            sudo yum -y update || true
             sudo amazon-linux-extras install -y docker || sudo yum -y install docker
             sudo systemctl enable --now docker
           else
@@ -131,3 +127,4 @@ jobs:
           sudo docker image prune -af >/dev/null 2>&1 || true
           EOF
           done
+
