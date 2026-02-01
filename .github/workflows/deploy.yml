@@ -65,6 +65,12 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY_QA }}" | tr -d '\r' > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
+      - name: Show SSH key fingerprint used by runner
+        run: |
+          echo "=== Runner key fingerprint (from SSH_PRIVATE_KEY_QA) ==="
+          ssh-keygen -y -f ~/.ssh/id_rsa > /tmp/runner.pub
+          ssh-keygen -lf /tmp/runner.pub
+    
 
       - name: Push public key to bastion (EC2 Instance Connect)
         run: |
@@ -88,6 +94,11 @@ jobs:
 
 
 
+      - name: Verify key_name in Terraform state (user-service)
+        run: |
+          terraform -chdir=infra/terraform init -reconfigure -backend-config=$TF_BACKEND
+          echo "=== key_name in state for ms_user_service ==="
+          terraform -chdir=infra/terraform state show module.ms_user_service.aws_instance.microservice[0] | sed -n '1,120p' | grep -E "key_name|ami|subnet_id|private_ip|tags"
 
 
       
