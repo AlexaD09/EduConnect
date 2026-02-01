@@ -1,7 +1,7 @@
 
 environment = "qa"   
 
-ssh_key_name = "prueba-qa"
+ssh_key_name = "key-qa"
 
 
 
