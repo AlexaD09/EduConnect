@@ -21,9 +21,15 @@ resource "aws_vpc_peering_connection_accepter" "peer" {
 }
 
 locals {
-  requester_rts = length(var.requester_route_table_ids) > 0 ? var.requester_route_table_ids : [var.requester_route_table_id]
-  accepter_rts  = length(var.accepter_route_table_ids)  > 0 ? var.accepter_route_table_ids  : [var.accepter_route_table_id]
+  requester_rts = length(var.requester_route_table_ids) > 0
+    ? var.requester_route_table_ids
+    : (var.requester_route_table_id == null ? [] : [var.requester_route_table_id])
+
+  accepter_rts = length(var.accepter_route_table_ids) > 0
+    ? var.accepter_route_table_ids
+    : (var.accepter_route_table_id == null ? [] : [var.accepter_route_table_id])
 }
+
 
 resource "aws_route" "requester_to_accepter" {
   for_each                 = toset(local.requester_rts)
@@ -39,4 +45,5 @@ resource "aws_route" "accepter_to_requester" {
   destination_cidr_block    = var.requester_cidr
   vpc_peering_connection_id = aws_vpc_peering_connection.this.id
 }
+
 

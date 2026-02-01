@@ -30,11 +30,11 @@ variable "accepter_cidr" {
 }
 
 variable "requester_route_table_id" {
-  type = string
+  type = null
 }
 
 variable "accepter_route_table_id" {
-  type = string
+  type = null
 }
 
 variable "requester_route_table_ids" {
