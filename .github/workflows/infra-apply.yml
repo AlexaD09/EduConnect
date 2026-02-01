@@ -146,6 +146,9 @@ jobs:
 
       - name: Terraform infra plan
         run: terraform -chdir=infra/terraform plan -input=false -var-file=${{ needs.set-env.outputs.tfvars }} -var="bastion_eip_allocation_id=${{ steps.eip.outputs.ALLOC_ID }}" -var="ssh_public_key=${{ secrets.SSH_PUBLIC_KEY_QA }}"
+      - name: Export TF vars
+        run: |
+          echo "TF_VAR_ssh_public_key=${{ secrets.SSH_PUBLIC_KEY_QA }}" >> $GITHUB_ENV
 
       - name: Terraform infra apply
         run: terraform -chdir=infra/terraform apply -auto-approve -var-file=${{ needs.set-env.outputs.tfvars }} -var="bastion_eip_allocation_id=${{ steps.eip.outputs.ALLOC_ID }}" -var="ssh_public_key=${{ secrets.SSH_PUBLIC_KEY_QA }}"

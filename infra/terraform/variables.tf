@@ -112,4 +112,10 @@ variable "allowed_ssh_cidr" {
 }
 
 variable "ssh_key_name" { type = string }
-variable "ssh_public_key" { type = string }
+
+
+variable "ssh_public_key" {
+  type        = string
+  description = "SSH public key content (ssh-rsa ...). Passed from GitHub Secrets."
+}
+

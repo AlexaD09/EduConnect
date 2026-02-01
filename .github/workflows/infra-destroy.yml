@@ -74,6 +74,9 @@ jobs:
       - name: Export required TF vars
         run: |
           echo "TF_VAR_bastion_eip_allocation_id=${{ secrets.BASTION_EIP_ALLOCATION_ID_QA }}" >> $GITHUB_ENV
+      - name: Export TF vars
+        run: |
+          echo "TF_VAR_ssh_public_key=${{ secrets.SSH_PUBLIC_KEY_QA }}" >> $GITHUB_ENV
 
       - name: Terraform infra destroy
         run: terraform -chdir=infra/terraform destroy -auto-approve -var-file=${{ steps.env.outputs.tfvars }} -var="ssh_public_key=${{ steps.env.outputs.ssh_pub }}"
