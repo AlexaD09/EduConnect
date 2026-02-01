@@ -45,6 +45,14 @@ output "mongo_private_ip"    { value = module.data_mongo.private_ips[0] }
 output "rabbit_private_ip"   { value = module.data_rabbitmq.private_ips[0] }
 output "mqtt_private_ip"     { value = module.data_mqtt.private_ips[0] }
 output "n8n_private_ip"      { value = module.data_n8n.private_ips[0] }
+output "api_gateway_public_ip" {
+  value = module.ms_api_gateway.public_ips[0]
+}
+
+output "api_gateway_public_url" {
+  value = "http://${module.ms_api_gateway.public_ips[0]}:8000"
+}
+
  
 output "service_endpoints" {
   value = {

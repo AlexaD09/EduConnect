@@ -266,11 +266,13 @@ module "ms_api_gateway" {
   key_name         = aws_key_pair.microservices_a.key_name
   allowed_app_port = 8000
 
-  vpc_id            = module.vpc_ms_a.vpc_id
-  subnet_ids        = module.vpc_ms_a.private_subnet_ids
-  allowed_app_cidrs  = local.internal_cidrs
-  bastion_cidr       = var.cidr_bastion
-  instance_count     = 1
+  vpc_id             = module.vpc_ms_a.vpc_id
+  subnet_ids         = module.vpc_ms_a.public_subnet_ids
+  associate_public_ip = true
+  allowed_app_cidrs   = ["0.0.0.0/0"]
+
+  bastion_cidr    = var.cidr_bastion
+  instance_count  = 1
 }
 
 module "ms_user_service" {
