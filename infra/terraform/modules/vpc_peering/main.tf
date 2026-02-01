@@ -29,7 +29,8 @@ resource "aws_route" "requester_to_accepter" {
   for_each                  = local.requester_rt_map
   route_table_id            = each.value
   destination_cidr_block    = var.accepter_cidr
-  vpc_peering_connection_id = aws_vpc_peering_connection.peer.id
+  vpc_peering_connection_id = aws_vpc_peering_connection.this.id
+
 }
 
 resource "aws_route" "accepter_to_requester" {
@@ -37,7 +38,8 @@ resource "aws_route" "accepter_to_requester" {
   for_each                  = local.accepter_rt_map
   route_table_id            = each.value
   destination_cidr_block    = var.requester_cidr
-  vpc_peering_connection_id = aws_vpc_peering_connection.peer.id
+  vpc_peering_connection_id = aws_vpc_peering_connection.this.id
+
 }
 
 
