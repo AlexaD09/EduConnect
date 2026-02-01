@@ -26,6 +26,7 @@ module "vpc_frontend" {
   cidr_block = var.cidr_frontend
 
   availability_zones = var.availability_zones
+  
 
   public_subnets_cidr = [
     cidrsubnet(var.cidr_frontend, 8, 0),
@@ -37,7 +38,9 @@ module "vpc_frontend" {
     cidrsubnet(var.cidr_frontend, 8, 11)
   ]
 
-  enable_nat_instance = true
+  enable_nat_gateway  = true
+  enable_nat_instance = false
+
   nat_key_name        = aws_key_pair.frontend.key_name
   admin_ssh_cidr      = var.cidr_bastion
 }
@@ -61,7 +64,9 @@ module "vpc_ms_a" {
     cidrsubnet(var.cidr_ms_a, 8, 11)
   ]
 
-  enable_nat_instance = true
+  enable_nat_gateway  = true
+enable_nat_instance = false
+
   nat_key_name        = aws_key_pair.microservices_a.key_name
   admin_ssh_cidr      = var.cidr_bastion
 }
@@ -85,7 +90,9 @@ module "vpc_ms_b" {
     cidrsubnet(var.cidr_ms_b, 8, 11)
   ]
 
-  enable_nat_instance = true
+  enable_nat_gateway  = true
+enable_nat_instance = false
+
   nat_instance_type   = "t3.micro"
 
   nat_key_name   = aws_key_pair.microservices_b.key_name
@@ -111,7 +118,9 @@ module "vpc_data" {
     cidrsubnet(var.cidr_data, 8, 11)
   ]
 
-  enable_nat_instance = true
+  enable_nat_gateway  = true
+enable_nat_instance = false
+
   nat_key_name        = aws_key_pair.data.key_name
   admin_ssh_cidr      = var.cidr_bastion
 }

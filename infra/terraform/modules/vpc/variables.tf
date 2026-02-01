@@ -46,3 +46,15 @@ variable "admin_ssh_cidr" {
   type        = string
   default     = "0.0.0.0/0"
 }
+
+variable "enable_nat_gateway" {
+  description = "Create a managed NAT Gateway for private subnets internet egress."
+  type        = bool
+  default     = false
+}
+
+variable "nat_gateway_single" {
+  description = "Create a single NAT Gateway in the first public subnet (cheaper)."
+  type        = bool
+  default     = true
+}
