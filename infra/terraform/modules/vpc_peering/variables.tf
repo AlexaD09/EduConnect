@@ -36,7 +36,7 @@ variable "requester_route_table_id" {
 
 variable "accepter_route_table_id" {
   type = string
-  default = null
+  default = null 
 }
 
 variable "requester_route_table_ids" {
