@@ -14,7 +14,7 @@ Approval Service manages the approval workflow for activities. It requires a coo
 - JWT-based authorization (coordinator)
 - HTTP clients: Activity Service, User Service, Event Service
 
-## Environment Variables (Docker Compose)
+## Environment Variables (Docker Compose).
 - `DB_HOST`
 - `DB_PORT`
 - `DB_NAME`

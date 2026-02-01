@@ -7,7 +7,7 @@ Activity Service registers student activities with entry/exit photos, stores the
 - Register activity with entry/exit photos
 - List activities by student
 - List pending activities by agreement
-- Provide activity details
+- Provide activity details.
 - Update activity status (approve/reject) via internal endpoint
 
 ## Tech Stack

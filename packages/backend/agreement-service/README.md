@@ -10,7 +10,7 @@ Agreement Service manages assignment-related operations for agreements, includin
 - List assignments for a coordinator (enriched via User Service)
 
 ## Tech Stack
-- FastAPI
+- FastAPI.
 - PostgreSQL
 - Internal HTTP client to User Service
 
