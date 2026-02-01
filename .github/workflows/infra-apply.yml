@@ -142,6 +142,15 @@ jobs:
       - name: Terraform infra init (S3 backend)
         run: terraform -chdir=infra/terraform init -reconfigure -backend-config=${{ needs.set-env.outputs.backend }}
 
+      - name: Recreate bastion (keypair + instance)
+        working-directory: infra/terraform
+        run: |
+          terraform apply -auto-approve -var-file="${TFVARS}" \
+            -var="ssh_public_key=${{ secrets.SSH_PUBLIC_KEY_QA }}" \
+            -replace="aws_key_pair.bastion" \
+            -replace="module.bastion.aws_instance.bastion"
+  
+
       - name: Terraform infra plan
         run: terraform -chdir=infra/terraform plan -input=false -var-file=${{ needs.set-env.outputs.tfvars }} -var="bastion_eip_allocation_id=${{ steps.eip.outputs.ALLOC_ID }}" -var="ssh_public_key=${{ secrets.SSH_PUBLIC_KEY_QA }}"
 
