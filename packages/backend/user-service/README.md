@@ -8,12 +8,12 @@ It follows a hexagonal architecture, separating domain logic, application use ca
 - User authentication and JWT generation
 - Student and coordinator information queries
 - Agreement listing and agreement detail queries
-- Service health check
+- Service health check.
 
 ## Architecture
 - Architecture style: Hexagonal (Ports & Adapters)
 - Communication: Internal REST API
-- Default port:8000
+- Default port:8000.
 
 ## Tech Stack
 - Python
