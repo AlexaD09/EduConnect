@@ -264,7 +264,7 @@ module "ms_api_gateway" {
   name             = "api-gateway-${var.environment}"
   instance_type    = "t3.micro"
   key_name         = aws_key_pair.microservices_a.key_name
-  allowed_app_port = 8000
+  allowed_app_port = 80
 
   vpc_id             = module.vpc_ms_a.vpc_id
   subnet_ids         = module.vpc_ms_a.public_subnet_ids
