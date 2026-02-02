@@ -1,6 +1,7 @@
 
 environment = "qa"   
 
+ssh_key_name = "key-qa"
 
 
 
@@ -19,5 +20,3 @@ cidr_data     = "10.40.0.0/16"
 cidr_bastion  = "10.50.0.0/16"
 
 
-bastion_eip_allocation_id = "eipalloc-0ff2a792892674f0a"
- 

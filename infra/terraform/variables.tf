@@ -104,13 +104,18 @@ variable "bastion_session_token" {
 }
 
 
-variable "key_name" {
-  type = string
-  default     = "prueba"
-}
 
 variable "allowed_ssh_cidr" {
   type        = string
   description = "CIDR range allowed for SSH to bastion"
-  default     = "0.0.0.0/0"  # o el rango que quieras
+  default     = "0.0.0.0/0"  
 }
+
+variable "ssh_key_name" { type = string }
+
+
+variable "ssh_public_key" {
+  type        = string
+  description = "SSH public key content (ssh-rsa ...). Passed from GitHub Secrets."
+}
+

@@ -9,6 +9,7 @@ terraform {
 
 resource "aws_security_group" "microservice_sg" {
   vpc_id = var.vpc_id
+  
 
   ingress {
     description = "SSH from Bastion"
@@ -33,6 +34,12 @@ resource "aws_security_group" "microservice_sg" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
+     tags = {
+    Name = "${var.name}-sg"
+  }
+
+
 }
 
 
@@ -54,7 +61,7 @@ resource "aws_instance" "microservice" {
   vpc_security_group_ids      = [aws_security_group.microservice_sg.id]
   key_name                    = var.key_name
   associate_public_ip_address = var.associate_public_ip
-  disable_api_termination              = true
+  disable_api_termination              = false
   instance_initiated_shutdown_behavior = "stop"
 
   user_data = var.user_data

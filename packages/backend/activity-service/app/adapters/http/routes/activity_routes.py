@@ -108,10 +108,7 @@ def update_activity_status(
     status_update: StatusUpdate,
     activity_repo = Depends(get_activity_repo),
 ):
-    """
-    Update activity status (called by approval-service)
-    Expected body: {"status": "APPROVED"|"REJECTED", "observations": "optional"}
-    """
+    
     cmd = UpdateActivityStatusCommand(activity_repo)
     try:
         cmd.execute(activity_id=activity_id, status=status_update.status, observations=status_update.observations)

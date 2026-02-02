@@ -1,7 +1,7 @@
 
 environment = "prod"   
 
-bastion_eip_allocation_id = "eipalloc-xxxxxxxx"
+
 
 
 

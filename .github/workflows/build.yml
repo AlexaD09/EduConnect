@@ -1,0 +1,102 @@
+name: CI Build + Push (only changed services)
+
+on:
+  push:
+    branches: [ features, qa, main ]
+    paths:
+      - "packages/**"
+      - "turbo.json"
+      - "package.json"
+      - "package-lock.json"
+      - "pnpm-lock.yaml"
+      - "yarn.lock"
+      - ".github/workflows/build.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: cd-${{ github.ref_name }}-${{ inputs.env_alias }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.out.outputs.tag }}
+      env_alias: ${{ steps.out.outputs.env_alias }}
+      services: ${{ steps.out.outputs.services }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set tag and env alias
+        run: |
+          if [ "${GITHUB_REF_NAME}" = "main" ]; then
+            echo "TAG=prod-${GITHUB_SHA::7}" >> $GITHUB_ENV
+            echo "ENV_ALIAS=prod" >> $GITHUB_ENV
+          else
+            echo "TAG=qa-${GITHUB_SHA::7}" >> $GITHUB_ENV
+            echo "ENV_ALIAS=qa" >> $GITHUB_ENV
+          fi
+
+      - name: Detect changed services
+        run: |
+          BASE="${{ github.event.before }}"
+          if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
+            BASE="$(git rev-list --max-parents=0 HEAD)"
+          fi
+
+          SERVICES=$(git diff --name-only "$BASE" "$GITHUB_SHA" | awk -F/ '
+            $1=="packages" && $2=="backend" && $3!="" {print $3}
+          ' | sort -u)
+
+          if [ -z "$SERVICES" ]; then
+            echo "CHANGED=false" >> $GITHUB_ENV
+            exit 0
+          fi
+
+          echo "CHANGED=true" >> $GITHUB_ENV
+          printf '%s\n' "$SERVICES" > .services.txt
+
+      - name: Export outputs
+        id: out
+        if: env.CHANGED == 'true'
+        run: |
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "env_alias=$ENV_ALIAS" >> $GITHUB_OUTPUT
+          echo "services=$(paste -sd' ' .services.txt)" >> $GITHUB_OUTPUT
+
+      - uses: actions/setup-node@v4
+        if: env.CHANGED == 'true'
+        with:
+          node-version: 20
+
+      - name: Docker login
+        if: env.CHANGED == 'true'
+        run: |
+          echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+      - name: Build + Push only changed backend services
+        if: env.CHANGED == 'true'
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          TAG: ${{ env.TAG }}
+          ENV_ALIAS: ${{ env.ENV_ALIAS }}
+        run: |
+          while read -r SVC; do
+            cd "packages/backend/$SVC"
+            npm run docker:build
+            npm run docker:push
+            cd - >/dev/null
+          done < .services.txt
+
+  deploy:
+    needs: build
+    if: ${{ needs.build.outputs.services != '' }}
+    uses: ./.github/workflows/deploy.yml
+    with:
+      tag: ${{ needs.build.outputs.tag }}
+      env_alias: ${{ needs.build.outputs.env_alias }}
+      services: ${{ needs.build.outputs.services }}
+    secrets: inherit

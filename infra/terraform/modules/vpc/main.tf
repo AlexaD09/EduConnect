@@ -22,7 +22,34 @@ resource "aws_internet_gateway" "this" {
   }
 }
 
+resource "aws_eip" "nat_gw" {
+  count  = var.enable_nat_gateway ? 1 : 0
+  domain = "vpc"
 
+  tags = {
+    Name = "${var.name}-nat-eip"
+  }
+}
+
+resource "aws_nat_gateway" "this" {
+  count         = var.enable_nat_gateway ? 1 : 0
+  allocation_id = aws_eip.nat_gw[0].id
+  subnet_id     = aws_subnet.public[0].id
+
+  depends_on = [aws_internet_gateway.this]
+
+  tags = {
+    Name = "${var.name}-nat-gw"
+  }
+}
+
+resource "aws_route" "private_default_to_nat_gateway" {
+  count = var.enable_nat_gateway ? 1 : 0
+
+  route_table_id         = aws_route_table.private.id
+  destination_cidr_block = "0.0.0.0/0"
+  nat_gateway_id         = aws_nat_gateway.this[0].id
+}
 
 
 resource "aws_subnet" "public" {
@@ -84,7 +111,8 @@ resource "aws_route_table" "private" {
 
 
 resource "aws_security_group" "nat" {
-  count = var.enable_nat_instance ? 1 : 0
+  count = (var.enable_nat_instance && !var.enable_nat_gateway) ? 1 : 0
+
 
   name        = "${var.name}-nat-sg"
   description = "SG for NAT Instance"
@@ -121,7 +149,7 @@ resource "aws_security_group" "nat" {
 }
 
 data "aws_ami" "amazon_linux_nat" {
-  count       = var.enable_nat_instance ? 1 : 0
+  count = var.enable_nat_instance ? 1 : 0
   most_recent = true
   owners      = ["amazon"]
 
@@ -132,7 +160,8 @@ data "aws_ami" "amazon_linux_nat" {
 }
 
 resource "aws_instance" "nat" {
-  count = var.enable_nat_instance ? 1 : 0
+  count = (var.enable_nat_instance && !var.enable_nat_gateway) ? 1 : 0
+
 
   ami                    = data.aws_ami.amazon_linux_nat[0].id
   instance_type          = var.nat_instance_type
@@ -142,7 +171,7 @@ resource "aws_instance" "nat" {
 
   associate_public_ip_address = true
   source_dest_check           = false
-  disable_api_termination              = true
+  disable_api_termination              = false
   instance_initiated_shutdown_behavior = "stop"
 
   user_data = <<-EOF
@@ -161,7 +190,8 @@ resource "aws_instance" "nat" {
 }
 
 resource "aws_route" "private_default_to_nat" {
-  count = var.enable_nat_instance ? 1 : 0
+  count = (var.enable_nat_instance && !var.enable_nat_gateway) ? 1 : 0
+
 
   route_table_id         = aws_route_table.private.id
   destination_cidr_block = "0.0.0.0/0"

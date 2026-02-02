@@ -20,15 +20,28 @@ resource "aws_vpc_peering_connection_accepter" "peer" {
   }
 }
 
+locals {
+  requester_rt_map = { for idx, rt_id in var.requester_route_table_ids : tostring(idx) => rt_id }
+  accepter_rt_map  = { for idx, rt_id in var.accepter_route_table_ids  : tostring(idx) => rt_id }
+}
+
 resource "aws_route" "requester_to_accepter" {
-  route_table_id            = var.requester_route_table_id
+  for_each                  = local.requester_rt_map
+  route_table_id            = each.value
   destination_cidr_block    = var.accepter_cidr
   vpc_peering_connection_id = aws_vpc_peering_connection.this.id
+
 }
 
 resource "aws_route" "accepter_to_requester" {
   provider                  = aws.peer
-  route_table_id            = var.accepter_route_table_id
+  for_each                  = local.accepter_rt_map
+  route_table_id            = each.value
   destination_cidr_block    = var.requester_cidr
   vpc_peering_connection_id = aws_vpc_peering_connection.this.id
+
+
 }
+
+
+

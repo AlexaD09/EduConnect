@@ -1,5 +1,3 @@
-
-
 data "aws_caller_identity" "frontend" {
   provider = aws.frontend
 }
@@ -21,13 +19,14 @@ data "aws_caller_identity" "bastion" {
 }
 
 module "vpc_frontend" {
-  source = "./modules/vpc"
+  source    = "./modules/vpc"
   providers = { aws = aws.frontend }
 
   name       = "frontend-${var.environment}"
   cidr_block = var.cidr_frontend
 
   availability_zones = var.availability_zones
+  
 
   public_subnets_cidr = [
     cidrsubnet(var.cidr_frontend, 8, 0),
@@ -39,15 +38,15 @@ module "vpc_frontend" {
     cidrsubnet(var.cidr_frontend, 8, 11)
   ]
 
-  
-  enable_nat_instance = true
+  enable_nat_gateway  = true
+  enable_nat_instance = false
+
   nat_key_name        = aws_key_pair.frontend.key_name
   admin_ssh_cidr      = var.cidr_bastion
 }
 
-
 module "vpc_ms_a" {
-  source = "./modules/vpc"
+  source    = "./modules/vpc"
   providers = { aws = aws.microservices_a }
 
   name       = "ms-a-${var.environment}"
@@ -65,14 +64,15 @@ module "vpc_ms_a" {
     cidrsubnet(var.cidr_ms_a, 8, 11)
   ]
 
-  enable_nat_instance = true
+  enable_nat_gateway  = true
+enable_nat_instance = false
+
   nat_key_name        = aws_key_pair.microservices_a.key_name
   admin_ssh_cidr      = var.cidr_bastion
 }
 
-
 module "vpc_ms_b" {
-  source = "./modules/vpc"
+  source    = "./modules/vpc"
   providers = { aws = aws.microservices_b }
 
   name       = "ms-b-${var.environment}"
@@ -90,15 +90,17 @@ module "vpc_ms_b" {
     cidrsubnet(var.cidr_ms_b, 8, 11)
   ]
 
-  enable_nat_instance = true
-  nat_instance_type = "t3.micro"
+  enable_nat_gateway  = true
+enable_nat_instance = false
 
-  nat_key_name        = aws_key_pair.microservices_b.key_name
-  admin_ssh_cidr      = var.cidr_bastion
+  nat_instance_type   = "t3.micro"
+
+  nat_key_name   = aws_key_pair.microservices_b.key_name
+  admin_ssh_cidr  = var.cidr_bastion
 }
 
 module "vpc_data" {
-  source = "./modules/vpc"
+  source    = "./modules/vpc"
   providers = { aws = aws.data }
 
   name       = "data-${var.environment}"
@@ -116,14 +118,15 @@ module "vpc_data" {
     cidrsubnet(var.cidr_data, 8, 11)
   ]
 
-  enable_nat_instance = true
+  enable_nat_gateway  = true
+enable_nat_instance = false
+
   nat_key_name        = aws_key_pair.data.key_name
   admin_ssh_cidr      = var.cidr_bastion
 }
 
-
 module "vpc_bastion" {
-  source = "./modules/vpc"
+  source    = "./modules/vpc"
   providers = { aws = aws.bastion }
 
   name       = "bastion-${var.environment}"
@@ -141,14 +144,8 @@ module "vpc_bastion" {
     cidrsubnet(var.cidr_bastion, 8, 11)
   ]
 
-  
   enable_nat_instance = false
 }
-
-
-
-
-
 
 module "bastion" {
   source    = "./modules/bastion"
@@ -156,12 +153,11 @@ module "bastion" {
 
   name              = "bastion-${var.environment}"
   vpc_id            = module.vpc_bastion.vpc_id
-  public_subnet_id = module.vpc_bastion.public_subnet_ids[0] 
-  allowed_ssh_cidr = var.allowed_ssh_cidr 
-  instance_type     = "t3.micro"
-  key_name = aws_key_pair.bastion.key_name
+  public_subnet_id   = module.vpc_bastion.public_subnet_ids[0]
+  allowed_ssh_cidr   = var.allowed_ssh_cidr
+  instance_type      = "t3.micro"
+  key_name           = aws_key_pair.bastion.key_name
 
-  
   user_data = <<-EOF
               #!/bin/bash
               set -eux
@@ -178,11 +174,6 @@ module "bastion" {
               EOF
 }
 
-
-
-
-
-
 module "frontend_web" {
   source    = "./modules/microservice_ec2"
   providers = { aws = aws.frontend }
@@ -192,9 +183,9 @@ module "frontend_web" {
   key_name         = aws_key_pair.frontend.key_name
   allowed_app_port = 80
 
-  vpc_id         = module.vpc_frontend.vpc_id
-  subnet_ids     = module.vpc_frontend.private_subnet_ids
-  allowed_app_cidrs = local.internal_cidrs
+  vpc_id            = module.vpc_frontend.vpc_id
+  subnet_ids        = module.vpc_frontend.private_subnet_ids
+  allowed_app_cidrs  = local.internal_cidrs
 
   bastion_cidr   = var.cidr_bastion
   instance_count = 1
@@ -209,9 +200,9 @@ module "frontend_mobile" {
   key_name         = aws_key_pair.frontend.key_name
   allowed_app_port = 80
 
-  vpc_id         = module.vpc_frontend.vpc_id
-  subnet_ids     = module.vpc_frontend.private_subnet_ids
-  allowed_app_cidrs = local.internal_cidrs
+  vpc_id            = module.vpc_frontend.vpc_id
+  subnet_ids        = module.vpc_frontend.private_subnet_ids
+  allowed_app_cidrs  = local.internal_cidrs
 
   bastion_cidr   = var.cidr_bastion
   instance_count = 1
@@ -226,18 +217,13 @@ module "frontend_desktop" {
   key_name         = aws_key_pair.frontend.key_name
   allowed_app_port = 80
 
-  vpc_id         = module.vpc_frontend.vpc_id
-  subnet_ids     = module.vpc_frontend.private_subnet_ids
-  allowed_app_cidrs = local.internal_cidrs
+  vpc_id            = module.vpc_frontend.vpc_id
+  subnet_ids        = module.vpc_frontend.private_subnet_ids
+  allowed_app_cidrs  = local.internal_cidrs
 
   bastion_cidr   = var.cidr_bastion
   instance_count = 1
 }
-
-
-
-
-
 
 module "ms_activity_service" {
   source    = "./modules/microservice_ec2"
@@ -248,11 +234,11 @@ module "ms_activity_service" {
   key_name         = aws_key_pair.microservices_a.key_name
   allowed_app_port = 8000
 
-  vpc_id         = module.vpc_ms_a.vpc_id
-  subnet_ids     = module.vpc_ms_a.private_subnet_ids
-  allowed_app_cidrs = local.internal_cidrs
-  bastion_cidr   = var.cidr_bastion
-  instance_count = 1
+  vpc_id            = module.vpc_ms_a.vpc_id
+  subnet_ids        = module.vpc_ms_a.private_subnet_ids
+  allowed_app_cidrs  = local.internal_cidrs
+  bastion_cidr       = var.cidr_bastion
+  instance_count     = 1
 }
 
 module "ms_agreement_service" {
@@ -264,11 +250,11 @@ module "ms_agreement_service" {
   key_name         = aws_key_pair.microservices_a.key_name
   allowed_app_port = 8000
 
-  vpc_id         = module.vpc_ms_a.vpc_id
-  subnet_ids     = module.vpc_ms_a.private_subnet_ids
-  allowed_app_cidrs = local.internal_cidrs
-  bastion_cidr   = var.cidr_bastion
-  instance_count = 1
+  vpc_id            = module.vpc_ms_a.vpc_id
+  subnet_ids        = module.vpc_ms_a.private_subnet_ids
+  allowed_app_cidrs  = local.internal_cidrs
+  bastion_cidr       = var.cidr_bastion
+  instance_count     = 1
 }
 
 module "ms_api_gateway" {
@@ -278,13 +264,15 @@ module "ms_api_gateway" {
   name             = "api-gateway-${var.environment}"
   instance_type    = "t3.micro"
   key_name         = aws_key_pair.microservices_a.key_name
-  allowed_app_port = 8000
+  allowed_app_port = 80
 
-  vpc_id         = module.vpc_ms_a.vpc_id
-  subnet_ids     = module.vpc_ms_a.private_subnet_ids
-  allowed_app_cidrs = local.internal_cidrs
-  bastion_cidr   = var.cidr_bastion
-  instance_count = 1
+  vpc_id             = module.vpc_ms_a.vpc_id
+  subnet_ids         = module.vpc_ms_a.public_subnet_ids
+  associate_public_ip = true
+  allowed_app_cidrs   = ["0.0.0.0/0"]
+
+  bastion_cidr    = var.cidr_bastion
+  instance_count  = 1
 }
 
 module "ms_user_service" {
@@ -298,9 +286,9 @@ module "ms_user_service" {
 
   vpc_id            = module.vpc_ms_a.vpc_id
   subnet_ids        = module.vpc_ms_a.private_subnet_ids
-  allowed_app_cidrs = local.internal_cidrs
-  bastion_cidr      = var.cidr_bastion
-  instance_count    = 1
+  allowed_app_cidrs  = local.internal_cidrs
+  bastion_cidr       = var.cidr_bastion
+  instance_count     = 1
 }
 
 module "ms_approval_service" {
@@ -312,11 +300,11 @@ module "ms_approval_service" {
   key_name         = aws_key_pair.microservices_a.key_name
   allowed_app_port = 8000
 
-  vpc_id         = module.vpc_ms_a.vpc_id
-  subnet_ids     = module.vpc_ms_a.private_subnet_ids
-  allowed_app_cidrs = local.internal_cidrs
-  bastion_cidr   = var.cidr_bastion
-  instance_count = 1
+  vpc_id            = module.vpc_ms_a.vpc_id
+  subnet_ids        = module.vpc_ms_a.private_subnet_ids
+  allowed_app_cidrs  = local.internal_cidrs
+  bastion_cidr       = var.cidr_bastion
+  instance_count     = 1
 }
 
 module "ms_audit_service" {
@@ -328,30 +316,27 @@ module "ms_audit_service" {
   key_name         = aws_key_pair.microservices_a.key_name
   allowed_app_port = 8000
 
-  vpc_id         = module.vpc_ms_a.vpc_id
-  subnet_ids     = module.vpc_ms_a.private_subnet_ids
-  allowed_app_cidrs = local.internal_cidrs
-  bastion_cidr   = var.cidr_bastion
-  instance_count = 1
+  vpc_id            = module.vpc_ms_a.vpc_id
+  subnet_ids        = module.vpc_ms_a.private_subnet_ids
+  allowed_app_cidrs  = local.internal_cidrs
+  bastion_cidr       = var.cidr_bastion
+  instance_count     = 1
 }
-
-
-
 
 module "ms_backup_service" {
   source    = "./modules/microservice_ec2"
   providers = { aws = aws.microservices_b }
 
   name             = "backup-service-${var.environment}"
-  instance_type = "t2.micro"
+  instance_type    = "t2.micro"
   key_name         = aws_key_pair.microservices_b.key_name
   allowed_app_port = 8000
 
-  vpc_id         = module.vpc_ms_b.vpc_id
-  subnet_ids     = module.vpc_ms_b.private_subnet_ids
-  allowed_app_cidrs = local.internal_cidrs
-  bastion_cidr   = var.cidr_bastion
-  instance_count = 1
+  vpc_id            = module.vpc_ms_b.vpc_id
+  subnet_ids        = module.vpc_ms_b.private_subnet_ids
+  allowed_app_cidrs  = local.internal_cidrs
+  bastion_cidr       = var.cidr_bastion
+  instance_count     = 1
 }
 
 module "ms_document_service" {
@@ -363,11 +348,11 @@ module "ms_document_service" {
   key_name         = aws_key_pair.microservices_b.key_name
   allowed_app_port = 8000
 
-  vpc_id         = module.vpc_ms_b.vpc_id
-  subnet_ids     = module.vpc_ms_b.private_subnet_ids
-  allowed_app_cidrs = local.internal_cidrs
-  bastion_cidr   = var.cidr_bastion
-  instance_count = 1
+  vpc_id            = module.vpc_ms_b.vpc_id
+  subnet_ids        = module.vpc_ms_b.private_subnet_ids
+  allowed_app_cidrs  = local.internal_cidrs
+  bastion_cidr       = var.cidr_bastion
+  instance_count     = 1
 }
 
 module "ms_event_service" {
@@ -375,15 +360,15 @@ module "ms_event_service" {
   providers = { aws = aws.microservices_b }
 
   name             = "event-service-${var.environment}"
-  instance_type = "t2.micro"
+  instance_type    = "t2.micro"
   key_name         = aws_key_pair.microservices_b.key_name
   allowed_app_port = 8000
 
-  vpc_id         = module.vpc_ms_b.vpc_id
-  subnet_ids     = module.vpc_ms_b.private_subnet_ids
-  allowed_app_cidrs = local.internal_cidrs
-  bastion_cidr   = var.cidr_bastion
-  instance_count = 1
+  vpc_id            = module.vpc_ms_b.vpc_id
+  subnet_ids        = module.vpc_ms_b.private_subnet_ids
+  allowed_app_cidrs  = local.internal_cidrs
+  bastion_cidr       = var.cidr_bastion
+  instance_count     = 1
 }
 
 module "ms_evidence_service" {
@@ -391,15 +376,15 @@ module "ms_evidence_service" {
   providers = { aws = aws.microservices_b }
 
   name             = "evidence-service-${var.environment}"
-  instance_type = "t2.micro"
+  instance_type    = "t2.micro"
   key_name         = aws_key_pair.microservices_b.key_name
   allowed_app_port = 8000
 
-  vpc_id         = module.vpc_ms_b.vpc_id
-  subnet_ids     = module.vpc_ms_b.private_subnet_ids
-  allowed_app_cidrs = local.internal_cidrs
-  bastion_cidr   = var.cidr_bastion
-  instance_count = 1
+  vpc_id            = module.vpc_ms_b.vpc_id
+  subnet_ids        = module.vpc_ms_b.private_subnet_ids
+  allowed_app_cidrs  = local.internal_cidrs
+  bastion_cidr       = var.cidr_bastion
+  instance_count     = 1
 }
 
 module "ms_notification_service" {
@@ -411,16 +396,12 @@ module "ms_notification_service" {
   key_name         = aws_key_pair.microservices_b.key_name
   allowed_app_port = 8000
 
-  vpc_id         = module.vpc_ms_b.vpc_id
-  subnet_ids     = module.vpc_ms_b.private_subnet_ids
-  allowed_app_cidrs = local.internal_cidrs
-  bastion_cidr   = var.cidr_bastion
-  instance_count = 1
+  vpc_id            = module.vpc_ms_b.vpc_id
+  subnet_ids        = module.vpc_ms_b.private_subnet_ids
+  allowed_app_cidrs  = local.internal_cidrs
+  bastion_cidr       = var.cidr_bastion
+  instance_count     = 1
 }
-
-
-
-
 
 module "data_postgres" {
   source    = "./modules/microservice_ec2"
@@ -431,13 +412,10 @@ module "data_postgres" {
   key_name         = aws_key_pair.data.key_name
   allowed_app_port = 5432
 
-  vpc_id         = module.vpc_data.vpc_id
-  subnet_ids     = module.vpc_data.private_subnet_ids
-
-  
+  vpc_id        = module.vpc_data.vpc_id
+  subnet_ids    = module.vpc_data.private_subnet_ids
   allowed_app_cidrs = [var.cidr_ms_a, var.cidr_ms_b]
 
-  
   bastion_cidr   = var.cidr_bastion
   instance_count = 1
 }
@@ -451,8 +429,8 @@ module "data_redis" {
   key_name         = aws_key_pair.data.key_name
   allowed_app_port = 6379
 
-  vpc_id         = module.vpc_data.vpc_id
-  subnet_ids     = module.vpc_data.private_subnet_ids
+  vpc_id        = module.vpc_data.vpc_id
+  subnet_ids    = module.vpc_data.private_subnet_ids
   allowed_app_cidrs = [var.cidr_ms_a, var.cidr_ms_b]
 
   bastion_cidr   = var.cidr_bastion
@@ -468,14 +446,13 @@ module "data_kafka" {
   key_name         = aws_key_pair.data.key_name
   allowed_app_port = 9092
 
-  vpc_id         = module.vpc_data.vpc_id
-  subnet_ids     = module.vpc_data.private_subnet_ids
+  vpc_id        = module.vpc_data.vpc_id
+  subnet_ids    = module.vpc_data.private_subnet_ids
   allowed_app_cidrs = [var.cidr_ms_a, var.cidr_ms_b]
 
   bastion_cidr   = var.cidr_bastion
   instance_count = 1
 }
-
 
 module "data_mongo" {
   source    = "./modules/microservice_ec2"
@@ -488,9 +465,9 @@ module "data_mongo" {
 
   vpc_id            = module.vpc_data.vpc_id
   subnet_ids        = module.vpc_data.private_subnet_ids
-  allowed_app_cidrs = [var.cidr_ms_a, var.cidr_ms_b]
-  bastion_cidr      = var.cidr_bastion
-  instance_count    = 1
+  allowed_app_cidrs  = [var.cidr_ms_a, var.cidr_ms_b]
+  bastion_cidr       = var.cidr_bastion
+  instance_count     = 1
 }
 
 module "data_rabbitmq" {
@@ -504,9 +481,9 @@ module "data_rabbitmq" {
 
   vpc_id            = module.vpc_data.vpc_id
   subnet_ids        = module.vpc_data.private_subnet_ids
-  allowed_app_cidrs = [var.cidr_ms_a, var.cidr_ms_b]
-  bastion_cidr      = var.cidr_bastion
-  instance_count    = 1
+  allowed_app_cidrs  = [var.cidr_ms_a, var.cidr_ms_b]
+  bastion_cidr       = var.cidr_bastion
+  instance_count     = 1
 }
 
 module "data_mqtt" {
@@ -520,9 +497,9 @@ module "data_mqtt" {
 
   vpc_id            = module.vpc_data.vpc_id
   subnet_ids        = module.vpc_data.private_subnet_ids
-  allowed_app_cidrs = [var.cidr_ms_a, var.cidr_ms_b]
-  bastion_cidr      = var.cidr_bastion
-  instance_count    = 1
+  allowed_app_cidrs  = [var.cidr_ms_a, var.cidr_ms_b]
+  bastion_cidr       = var.cidr_bastion
+  instance_count     = 1
 }
 
 module "data_n8n" {
@@ -536,29 +513,26 @@ module "data_n8n" {
 
   vpc_id            = module.vpc_data.vpc_id
   subnet_ids        = module.vpc_data.private_subnet_ids
-  allowed_app_cidrs = [var.cidr_ms_a, var.cidr_ms_b]
-  bastion_cidr      = var.cidr_bastion
-  instance_count    = 1
+  allowed_app_cidrs  = [var.cidr_ms_a, var.cidr_ms_b]
+  bastion_cidr       = var.cidr_bastion
+  instance_count     = 1
 }
-
-
-
 
 module "prod_ms_a_activity_alb_asg" {
   source    = "./modules/alb_asg"
   providers = { aws = aws.microservices_a }
   count     = var.environment == "prod" ? 1 : 0
 
-  name                = "ms-a-activity-${var.environment}"
-  environment         = var.environment
-  vpc_id              = module.vpc_ms_a.vpc_id
-  public_subnet_ids   = module.vpc_ms_a.private_subnet_ids
-  private_subnet_ids  = module.vpc_ms_a.private_subnet_ids
-  instance_type       = "t3.micro"
-  key_name            = aws_key_pair.microservices_a.key_name
-  allowed_http_cidr   = var.cidr_bastion
-  bastion_cidr        = var.cidr_bastion
-  internal            = true
+  name               = "ms-a-activity-${var.environment}"
+  environment        = var.environment
+  vpc_id             = module.vpc_ms_a.vpc_id
+  public_subnet_ids  = module.vpc_ms_a.private_subnet_ids
+  private_subnet_ids = module.vpc_ms_a.private_subnet_ids
+  instance_type      = "t3.micro"
+  key_name           = aws_key_pair.microservices_a.key_name
+  allowed_http_cidr  = var.cidr_bastion
+  bastion_cidr       = var.cidr_bastion
+  internal           = true
 }
 
 module "prod_ms_a_agreement_alb_asg" {
@@ -719,42 +693,39 @@ module "prod_audit_alb_asg" {
   providers = { aws = aws.microservices_a }
   count     = var.environment == "prod" ? 1 : 0
 
-  name            = "audit-${var.environment}"
-  environment     = var.environment
-  internal        = true
+  name        = "audit-${var.environment}"
+  environment = var.environment
+  internal    = true
 
   vpc_id             = module.vpc_ms_a.vpc_id
   public_subnet_ids  = module.vpc_ms_a.private_subnet_ids
   private_subnet_ids = module.vpc_ms_a.private_subnet_ids
 
-  instance_type      = "t3.micro"
-  key_name           = aws_key_pair.microservices_a.key_name
+  instance_type = "t3.micro"
+  key_name      = aws_key_pair.microservices_a.key_name
 
-  allowed_http_cidr  = var.cidr_bastion
-  bastion_cidr       = var.cidr_bastion
+  allowed_http_cidr = var.cidr_bastion
+  bastion_cidr      = var.cidr_bastion
 }
-
-
-
 
 module "prod_backup_alb_asg" {
   source    = "./modules/alb_asg"
   providers = { aws = aws.microservices_b }
   count     = var.environment == "prod" ? 1 : 0
 
-  name            = "backup-${var.environment}"
-  environment     = var.environment
-  internal        = true
+  name        = "backup-${var.environment}"
+  environment = var.environment
+  internal    = true
 
   vpc_id             = module.vpc_ms_b.vpc_id
   public_subnet_ids  = module.vpc_ms_b.private_subnet_ids
   private_subnet_ids = module.vpc_ms_b.private_subnet_ids
 
-  instance_type      = "t3.micro"
-  key_name           = aws_key_pair.microservices_b.key_name
+  instance_type = "t3.micro"
+  key_name      = aws_key_pair.microservices_b.key_name
 
-  allowed_http_cidr  = var.cidr_bastion
-  bastion_cidr       = var.cidr_bastion
+  allowed_http_cidr = var.cidr_bastion
+  bastion_cidr      = var.cidr_bastion
 }
 
 module "prod_document_alb_asg" {
@@ -762,19 +733,19 @@ module "prod_document_alb_asg" {
   providers = { aws = aws.microservices_b }
   count     = var.environment == "prod" ? 1 : 0
 
-  name            = "document-${var.environment}"
-  environment     = var.environment
-  internal        = true
+  name        = "document-${var.environment}"
+  environment = var.environment
+  internal    = true
 
   vpc_id             = module.vpc_ms_b.vpc_id
   public_subnet_ids  = module.vpc_ms_b.private_subnet_ids
   private_subnet_ids = module.vpc_ms_b.private_subnet_ids
 
-  instance_type      = "t3.micro"
-  key_name           = aws_key_pair.microservices_b.key_name
+  instance_type = "t3.micro"
+  key_name      = aws_key_pair.microservices_b.key_name
 
-  allowed_http_cidr  = var.cidr_bastion
-  bastion_cidr       = var.cidr_bastion
+  allowed_http_cidr = var.cidr_bastion
+  bastion_cidr      = var.cidr_bastion
 }
 
 module "prod_event_alb_asg" {
@@ -782,19 +753,19 @@ module "prod_event_alb_asg" {
   providers = { aws = aws.microservices_b }
   count     = var.environment == "prod" ? 1 : 0
 
-  name            = "event-${var.environment}"
-  environment     = var.environment
-  internal        = true
+  name        = "event-${var.environment}"
+  environment = var.environment
+  internal    = true
 
   vpc_id             = module.vpc_ms_b.vpc_id
   public_subnet_ids  = module.vpc_ms_b.private_subnet_ids
   private_subnet_ids = module.vpc_ms_b.private_subnet_ids
 
-  instance_type      = "t3.micro"
-  key_name           = aws_key_pair.microservices_b.key_name
+  instance_type = "t3.micro"
+  key_name      = aws_key_pair.microservices_b.key_name
 
-  allowed_http_cidr  = var.cidr_bastion
-  bastion_cidr       = var.cidr_bastion
+  allowed_http_cidr = var.cidr_bastion
+  bastion_cidr      = var.cidr_bastion
 }
 
 module "prod_evidence_alb_asg" {
@@ -802,19 +773,19 @@ module "prod_evidence_alb_asg" {
   providers = { aws = aws.microservices_b }
   count     = var.environment == "prod" ? 1 : 0
 
-  name            = "evidence-${var.environment}"
-  environment     = var.environment
-  internal        = true
+  name        = "evidence-${var.environment}"
+  environment = var.environment
+  internal    = true
 
   vpc_id             = module.vpc_ms_b.vpc_id
   public_subnet_ids  = module.vpc_ms_b.private_subnet_ids
   private_subnet_ids = module.vpc_ms_b.private_subnet_ids
 
-  instance_type      = "t3.micro"
-  key_name           = aws_key_pair.microservices_b.key_name
+  instance_type = "t3.micro"
+  key_name      = aws_key_pair.microservices_b.key_name
 
-  allowed_http_cidr  = var.cidr_bastion
-  bastion_cidr       = var.cidr_bastion
+  allowed_http_cidr = var.cidr_bastion
+  bastion_cidr      = var.cidr_bastion
 }
 
 module "prod_notification_alb_asg" {
@@ -822,26 +793,20 @@ module "prod_notification_alb_asg" {
   providers = { aws = aws.microservices_b }
   count     = var.environment == "prod" ? 1 : 0
 
-  name            = "notification-${var.environment}"
-  environment     = var.environment
-  internal        = true
+  name        = "notification-${var.environment}"
+  environment = var.environment
+  internal    = true
 
   vpc_id             = module.vpc_ms_b.vpc_id
   public_subnet_ids  = module.vpc_ms_b.private_subnet_ids
   private_subnet_ids = module.vpc_ms_b.private_subnet_ids
 
-  instance_type      = "t3.micro"
-  key_name           = aws_key_pair.microservices_b.key_name
+  instance_type = "t3.micro"
+  key_name      = aws_key_pair.microservices_b.key_name
 
-  allowed_http_cidr  = var.cidr_bastion
-  bastion_cidr       = var.cidr_bastion
+  allowed_http_cidr = var.cidr_bastion
+  bastion_cidr      = var.cidr_bastion
 }
-
-
-
-
-
-
 
 module "peer_frontend_ms_a" {
   source = "./modules/vpc_peering"
@@ -852,9 +817,9 @@ module "peer_frontend_ms_a" {
 
   name = "peer-frontend-ms-a-${var.environment}"
 
-  requester_vpc_id = module.vpc_frontend.vpc_id
-  accepter_vpc_id  = module.vpc_ms_a.vpc_id
-  accepter_owner_id = data.aws_caller_identity.microservices_a.account_id
+  requester_vpc_id   = module.vpc_frontend.vpc_id
+  accepter_vpc_id    = module.vpc_ms_a.vpc_id
+  accepter_owner_id  = data.aws_caller_identity.microservices_a.account_id
 
   requester_cidr = var.cidr_frontend
   accepter_cidr  = var.cidr_ms_a
@@ -862,12 +827,11 @@ module "peer_frontend_ms_a" {
   requester_route_table_id = module.vpc_frontend.private_route_table_id
   accepter_route_table_id  = module.vpc_ms_a.private_route_table_id
 
-   depends_on = [
+  depends_on = [
     module.vpc_frontend,
     module.vpc_ms_a
   ]
 }
-
 
 module "peer_frontend_ms_b" {
   source = "./modules/vpc_peering"
@@ -878,9 +842,9 @@ module "peer_frontend_ms_b" {
 
   name = "peer-frontend-ms-b-${var.environment}"
 
-  requester_vpc_id = module.vpc_frontend.vpc_id
-  accepter_vpc_id  = module.vpc_ms_b.vpc_id
-  accepter_owner_id = data.aws_caller_identity.microservices_b.account_id
+  requester_vpc_id   = module.vpc_frontend.vpc_id
+  accepter_vpc_id    = module.vpc_ms_b.vpc_id
+  accepter_owner_id  = data.aws_caller_identity.microservices_b.account_id
 
   requester_cidr = var.cidr_frontend
   accepter_cidr  = var.cidr_ms_b
@@ -888,12 +852,11 @@ module "peer_frontend_ms_b" {
   requester_route_table_id = module.vpc_frontend.private_route_table_id
   accepter_route_table_id  = module.vpc_ms_b.private_route_table_id
 
-   depends_on = [
+  depends_on = [
     module.vpc_frontend,
     module.vpc_ms_b
   ]
 }
-
 
 module "peer_ms_a_data" {
   source = "./modules/vpc_peering"
@@ -904,21 +867,21 @@ module "peer_ms_a_data" {
 
   name = "peer-ms-a-data-${var.environment}"
 
-  requester_vpc_id = module.vpc_ms_a.vpc_id
-  accepter_vpc_id  = module.vpc_data.vpc_id
-  accepter_owner_id = data.aws_caller_identity.data.account_id
+  requester_vpc_id   = module.vpc_ms_a.vpc_id
+  accepter_vpc_id    = module.vpc_data.vpc_id
+  accepter_owner_id  = data.aws_caller_identity.data.account_id
 
   requester_cidr = var.cidr_ms_a
   accepter_cidr  = var.cidr_data
 
   requester_route_table_id = module.vpc_ms_a.private_route_table_id
   accepter_route_table_id  = module.vpc_data.private_route_table_id
-   depends_on = [
+
+  depends_on = [
     module.vpc_ms_a,
     module.vpc_data
   ]
 }
-
 
 module "peer_ms_b_data" {
   source = "./modules/vpc_peering"
@@ -929,21 +892,21 @@ module "peer_ms_b_data" {
 
   name = "peer-ms-b-data-${var.environment}"
 
-  requester_vpc_id = module.vpc_ms_b.vpc_id
-  accepter_vpc_id  = module.vpc_data.vpc_id
-  accepter_owner_id = data.aws_caller_identity.data.account_id
+  requester_vpc_id   = module.vpc_ms_b.vpc_id
+  accepter_vpc_id    = module.vpc_data.vpc_id
+  accepter_owner_id  = data.aws_caller_identity.data.account_id
 
   requester_cidr = var.cidr_ms_b
   accepter_cidr  = var.cidr_data
 
   requester_route_table_id = module.vpc_ms_b.private_route_table_id
   accepter_route_table_id  = module.vpc_data.private_route_table_id
-   depends_on = [
+
+  depends_on = [
     module.vpc_ms_b,
     module.vpc_data
   ]
 }
-
 
 module "peer_bastion_frontend" {
   source = "./modules/vpc_peering"
@@ -954,22 +917,27 @@ module "peer_bastion_frontend" {
 
   name = "peer-bastion-frontend-${var.environment}"
 
-  requester_vpc_id = module.vpc_bastion.vpc_id
-  accepter_vpc_id  = module.vpc_frontend.vpc_id
-  accepter_owner_id = data.aws_caller_identity.frontend.account_id
+  requester_vpc_id   = module.vpc_bastion.vpc_id
+  accepter_vpc_id    = module.vpc_frontend.vpc_id
+  accepter_owner_id  = data.aws_caller_identity.frontend.account_id
 
   requester_cidr = var.cidr_bastion
   accepter_cidr  = var.cidr_frontend
 
-  requester_route_table_id = module.vpc_bastion.public_route_table_id
-  accepter_route_table_id  = module.vpc_frontend.private_route_table_id
+  requester_route_table_ids = [
+    module.vpc_bastion.public_route_table_id
+  ]
 
-   depends_on = [
+  accepter_route_table_ids = [
+    module.vpc_frontend.private_route_table_id,
+    module.vpc_frontend.public_route_table_id
+  ]
+
+  depends_on = [
     module.vpc_frontend,
     module.vpc_bastion
   ]
 }
-
 
 module "peer_bastion_ms_a" {
   source = "./modules/vpc_peering"
@@ -980,49 +948,58 @@ module "peer_bastion_ms_a" {
 
   name = "peer-bastion-ms-a-${var.environment}"
 
-  requester_vpc_id = module.vpc_bastion.vpc_id
-  accepter_vpc_id  = module.vpc_ms_a.vpc_id
-  accepter_owner_id = data.aws_caller_identity.microservices_a.account_id
+  requester_vpc_id   = module.vpc_bastion.vpc_id
+  accepter_vpc_id    = module.vpc_ms_a.vpc_id
+  accepter_owner_id  = data.aws_caller_identity.microservices_a.account_id
 
   requester_cidr = var.cidr_bastion
   accepter_cidr  = var.cidr_ms_a
 
-  requester_route_table_id = module.vpc_bastion.public_route_table_id
-  accepter_route_table_id  = module.vpc_ms_a.private_route_table_id
+  requester_route_table_ids = [
+    module.vpc_bastion.public_route_table_id
+  ]
 
-   depends_on = [
+  accepter_route_table_ids = [
+    module.vpc_ms_a.private_route_table_id,
+    module.vpc_ms_a.public_route_table_id
+  ]
+
+  depends_on = [
     module.vpc_bastion,
     module.vpc_ms_a
   ]
 }
-
 
 module "peer_bastion_ms_b" {
   source = "./modules/vpc_peering"
   providers = {
     aws      = aws.bastion
     aws.peer = aws.microservices_b
-
   }
 
   name = "peer-bastion-ms-b-${var.environment}"
 
-  requester_vpc_id = module.vpc_bastion.vpc_id
-  accepter_vpc_id  = module.vpc_ms_b.vpc_id
-  accepter_owner_id = data.aws_caller_identity.microservices_b.account_id
+  requester_vpc_id   = module.vpc_bastion.vpc_id
+  accepter_vpc_id    = module.vpc_ms_b.vpc_id
+  accepter_owner_id  = data.aws_caller_identity.microservices_b.account_id
 
   requester_cidr = var.cidr_bastion
   accepter_cidr  = var.cidr_ms_b
 
-  requester_route_table_id = module.vpc_bastion.public_route_table_id
-  accepter_route_table_id  = module.vpc_ms_b.private_route_table_id
+  requester_route_table_ids = [
+    module.vpc_bastion.public_route_table_id
+  ]
 
-   depends_on = [
+  accepter_route_table_ids = [
+    module.vpc_ms_b.private_route_table_id,
+    module.vpc_ms_b.public_route_table_id
+  ]
+
+  depends_on = [
     module.vpc_bastion,
     module.vpc_ms_b
   ]
 }
-
 
 module "peer_bastion_data" {
   source = "./modules/vpc_peering"
@@ -1033,17 +1010,23 @@ module "peer_bastion_data" {
 
   name = "peer-bastion-data-${var.environment}"
 
-  requester_vpc_id = module.vpc_bastion.vpc_id
-  accepter_vpc_id  = module.vpc_data.vpc_id
-  accepter_owner_id = data.aws_caller_identity.data.account_id
+  requester_vpc_id   = module.vpc_bastion.vpc_id
+  accepter_vpc_id    = module.vpc_data.vpc_id
+  accepter_owner_id  = data.aws_caller_identity.data.account_id
 
   requester_cidr = var.cidr_bastion
   accepter_cidr  = var.cidr_data
 
-  requester_route_table_id = module.vpc_bastion.public_route_table_id
-  accepter_route_table_id  = module.vpc_data.private_route_table_id
+  requester_route_table_ids = [
+    module.vpc_bastion.public_route_table_id
+  ]
 
-   depends_on = [
+  accepter_route_table_ids = [
+    module.vpc_data.private_route_table_id,
+    module.vpc_data.public_route_table_id
+  ]
+
+  depends_on = [
     module.vpc_bastion,
     module.vpc_data
   ]

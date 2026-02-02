@@ -31,8 +31,20 @@ variable "accepter_cidr" {
 
 variable "requester_route_table_id" {
   type = string
+  default = null
 }
 
 variable "accepter_route_table_id" {
   type = string
+  default = null 
+}
+
+variable "requester_route_table_ids" {
+  type    = list(string)
+  default = []
+}
+
+variable "accepter_route_table_ids" {
+  type    = list(string)
+  default = []
 }
