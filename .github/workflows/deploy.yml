@@ -241,12 +241,7 @@ jobs:
           echo "$DOCKERHUB_PASSWORD" | sudo docker login -u "$DOCKERHUB_USERNAME" --password-stdin
           sudo docker pull "$IMAGE"
           sudo docker rm -f "$SVC" >/dev/null 2>&1 || true
-          if [ "$SVC" = "api-gateway" ]; then
-            sudo docker run -d --name "$SVC" --restart unless-stopped -p 8000:80 "$IMAGE"
-          else
-            sudo docker run -d --name "$SVC" --restart unless-stopped -p "$PORT:$PORT" "$IMAGE"
-          fi
-
+          sudo docker run -d --name "$SVC" --restart unless-stopped -p "$PORT:$PORT" "$IMAGE"
           sudo docker image prune -af >/dev/null 2>&1 || true
           EOF
           done

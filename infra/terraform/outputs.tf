@@ -57,7 +57,7 @@ output "api_gateway_public_url" {
 output "service_endpoints" {
   value = {
     "frontend-web"        = { ip = module.frontend_web.private_ips[0],            port = 80 }
-    "api-gateway"         = { ip = module.ms_api_gateway.private_ips[0],          port = 8000 }
+    "api-gateway"         = { ip = module.ms_api_gateway.private_ips[0],          port = 80 }
 
     "activity-service"    = { ip = module.ms_activity_service.private_ips[0],     port = 8000 }
     "agreement-service"   = { ip = module.ms_agreement_service.private_ips[0],    port = 8000 }
