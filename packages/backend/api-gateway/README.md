@@ -11,7 +11,7 @@ This service is the single entry point for the backend. It routes HTTP requests 
 ## Tech Stack
 - NGINX (containerized)
 
-## Exposed Port (Docker Compose)
+## Exposed Port (Docker Compose).
 - Host: `http://localhost:8000`
 - Container: `80` 
 

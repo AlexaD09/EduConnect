@@ -105,27 +105,27 @@ jobs:
 
       - name: Push public key to target instances (EIC + read state with bastion creds)
         env:
-          # bastion creds (for reading terraform remote state in S3)
+          
           AWS_BASTION_ACCESS_KEY_ID: ${{ secrets.AWS_BASTION_ACCESS_KEY_ID }}
           AWS_BASTION_SECRET_ACCESS_KEY: ${{ secrets.AWS_BASTION_SECRET_ACCESS_KEY }}
           AWS_BASTION_SESSION_TOKEN: ${{ secrets.AWS_BASTION_SESSION_TOKEN }}
 
-          # Frontend account
+           
           AWS_FRONTEND_ACCESS_KEY_ID: ${{ secrets.AWS_FRONTEND_ACCESS_KEY_ID }}
           AWS_FRONTEND_SECRET_ACCESS_KEY: ${{ secrets.AWS_FRONTEND_SECRET_ACCESS_KEY }}
           AWS_FRONTEND_SESSION_TOKEN: ${{ secrets.AWS_FRONTEND_SESSION_TOKEN }}
 
-          # Databases account
+          
           AWS_DATABASES_ACCESS_KEY_ID: ${{ secrets.AWS_DATABASES_ACCESS_KEY_ID }}
           AWS_DATABASES_SECRET_ACCESS_KEY: ${{ secrets.AWS_DATABASES_SECRET_ACCESS_KEY }}
           AWS_DATABASES_SESSION_TOKEN: ${{ secrets.AWS_DATABASES_SESSION_TOKEN }}
 
-          # Microservices A account
+           
           AWS_MS_A_ACCESS_KEY_ID: ${{ secrets.AWS_MS_A_ACCESS_KEY_ID }}
           AWS_MS_A_SECRET_ACCESS_KEY: ${{ secrets.AWS_MS_A_SECRET_ACCESS_KEY }}
           AWS_MS_A_SESSION_TOKEN: ${{ secrets.AWS_MS_A_SESSION_TOKEN }}
 
-          # Microservices B account
+           
           AWS_MS_B_ACCESS_KEY_ID: ${{ secrets.AWS_MS_B_ACCESS_KEY_ID }}
           AWS_MS_B_SECRET_ACCESS_KEY: ${{ secrets.AWS_MS_B_SECRET_ACCESS_KEY }}
           AWS_MS_B_SESSION_TOKEN: ${{ secrets.AWS_MS_B_SESSION_TOKEN }}
@@ -241,7 +241,12 @@ jobs:
           echo "$DOCKERHUB_PASSWORD" | sudo docker login -u "$DOCKERHUB_USERNAME" --password-stdin
           sudo docker pull "$IMAGE"
           sudo docker rm -f "$SVC" >/dev/null 2>&1 || true
-          sudo docker run -d --name "$SVC" --restart unless-stopped -p "$PORT:$PORT" "$IMAGE"
+          if [ "$SVC" = "api-gateway" ]; then
+            sudo docker run -d --name "$SVC" --restart unless-stopped -p 8000:80 "$IMAGE"
+          else
+            sudo docker run -d --name "$SVC" --restart unless-stopped -p "$PORT:$PORT" "$IMAGE"
+          fi
+
           sudo docker image prune -af >/dev/null 2>&1 || true
           EOF
           done
