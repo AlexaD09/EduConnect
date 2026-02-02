@@ -50,7 +50,7 @@ output "api_gateway_public_ip" {
 }
 
 output "api_gateway_public_url" {
-  value = "http://${module.ms_api_gateway.public_ips[0]}:8000"
+  value = "http://${module.ms_api_gateway.public_ips[0]}:80"
 }
 
  
