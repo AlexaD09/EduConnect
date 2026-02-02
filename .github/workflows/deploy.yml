@@ -241,7 +241,13 @@ jobs:
           echo "$DOCKERHUB_PASSWORD" | sudo docker login -u "$DOCKERHUB_USERNAME" --password-stdin
           sudo docker pull "$IMAGE"
           sudo docker rm -f "$SVC" >/dev/null 2>&1 || true
-          sudo docker run -d --name "$SVC" --restart unless-stopped -p "$PORT:$PORT" "$IMAGE"
+          sudo docker run -d \
+          --name "$SVC" \
+          --restart unless-stopped \
+          -p "$PORT:$PORT" \
+          -e DATABASE_URL="${{ secrets.DATABASE_URL_QA }}" \
+          "$IMAGE"
+
           sudo docker image prune -af >/dev/null 2>&1 || true
           EOF
           done
