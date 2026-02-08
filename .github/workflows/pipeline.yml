@@ -1,4 +1,4 @@
-name: Full Pipeline (Infra → Runtime → Services)
+name: Full Pipeline
 
 on:
   push:
@@ -16,6 +16,7 @@ jobs:
     with:
       base: ${{ github.event.before }}
     secrets: inherit
+
 
   services:
     needs: runtime
