@@ -1,12 +1,8 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "pipeline": {
-    "docker:build": {
-      "cache": false
-    },
-    "docker:push": {
-      "cache": false,
-      "dependsOn": ["docker:build"]
-    }
+    "docker:build": { "cache": false },
+    "docker:push":  { "cache": false, "dependsOn": ["docker:build"] },
+    "deploy":       { "cache": false }
   }
 }

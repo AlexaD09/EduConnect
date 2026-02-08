@@ -3,7 +3,8 @@
   "private": true,
   "workspaces": [
     "packages/backend/*",
-    "packages/frontend/*"
+    "packages/frontend/*",
+    "runtime/*"
   ],
   "scripts": {
     "build": "turbo run build",

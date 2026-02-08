@@ -1,0 +1,7 @@
+{
+  "name": "runtime-mongo",
+  "private": true,
+  "scripts": {
+    "deploy": "bash ./deploy.sh"
+  }
+}

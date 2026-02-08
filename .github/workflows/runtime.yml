@@ -1,0 +1,73 @@
+name: Runtime Deploy (Turbo)
+
+on:
+  workflow_call:
+    inputs:
+      base:
+        required: true
+        type: string
+
+jobs:
+  runtime:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.6
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Choose backend by branch
+        id: env
+        run: |
+          if [ "${GITHUB_REF_NAME}" = "main" ]; then
+            echo "TF_BACKEND=backend-prod.hcl" >> $GITHUB_ENV
+          else
+            echo "TF_BACKEND=backend-qa.hcl" >> $GITHUB_ENV
+          fi
+
+      - name: Configure AWS creds (bastion account)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_BASTION_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_BASTION_SECRET_ACCESS_KEY }}
+          aws-session-token:     ${{ secrets.AWS_BASTION_SESSION_TOKEN }}
+          aws-region: us-east-1
+
+      - name: Terraform init (read outputs)
+        run: |
+          terraform -chdir=infra/terraform init -reconfigure -input=false -backend-config=$TF_BACKEND
+
+      - name: Read bastion + endpoints
+        run: |
+          echo "BASTION_HOST=$(terraform -chdir=infra/terraform output -raw bastion_public_ip)" >> $GITHUB_ENV
+
+          echo "ENDPOINTS_JSON<<EOF" >> $GITHUB_ENV
+          terraform -chdir=infra/terraform output -json service_endpoints >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Prepare SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY_QA }}" | tr -d '\r' > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+
+      - name: Deploy runtime with Turbo (only changed)
+        env:
+          SSH_USER: ec2-user
+          REMOTE_DIR_BASE: /home/ec2-user/runtime
+        run: |
+          export SSH_USER
+          export REMOTE_DIR_BASE
+          # turbo decide qué runtimes cambiaron desde "base"
+          npx turbo run deploy --filter=runtime-* --since=${{ inputs.base }}

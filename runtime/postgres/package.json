@@ -1,0 +1,7 @@
+{
+  "name": "runtime-postgres",
+  "private": true,
+  "scripts": {
+    "deploy": "bash ./deploy.sh"
+  }
+}

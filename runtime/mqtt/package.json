@@ -1,0 +1,7 @@
+{
+  "name": "runtime-mqtt",
+  "private": true,
+  "scripts": {
+    "deploy": "bash ./deploy.sh"
+  }
+}
