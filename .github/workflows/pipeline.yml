@@ -12,15 +12,18 @@ jobs:
       infra_changed: ${{ steps.filter.outputs.infra }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      
       - id: filter
         uses: dorny/paths-filter@v3
         with:
+          base: ${{ github.event.before }}
+          ref: ${{ github.sha }}
           filters: |
             infra:
               - 'infra/**'
-              - '.github/workflows/infra-apply.yml'
+
 
   infra:
     needs: detect
