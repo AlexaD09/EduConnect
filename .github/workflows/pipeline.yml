@@ -10,6 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       infra_changed: ${{ steps.filter.outputs.infra }}
+      runtime_changed: ${{ steps.filter.outputs.runtime }}
+      services_changed: ${{ steps.filter.outputs.services }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -23,7 +25,10 @@ jobs:
           filters: |
             infra:
               - 'infra/**'
-
+            runtime:
+              - 'runtime/**'
+            services:
+              - 'packages/**'
 
   infra:
     needs: detect
@@ -33,15 +38,18 @@ jobs:
 
   runtime:
     needs: [detect, infra]
+    
+    if: always() && needs.detect.outputs.runtime_changed == 'true' && (needs.infra.result == 'success' || needs.infra.result == 'skipped')
     uses: ./.github/workflows/runtime.yml
     with:
       base: ${{ github.event.before }}
     secrets: inherit
 
   services:
-    needs: runtime
+    needs: [detect, infra, runtime]
+    
+    if: always() && needs.detect.outputs.services_changed == 'true'
     uses: ./.github/workflows/build.yml
     with:
       base: ${{ github.event.before }}
     secrets: inherit
-
