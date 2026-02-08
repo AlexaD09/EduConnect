@@ -6,27 +6,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  detect:
-    runs-on: ubuntu-latest
-    outputs:
-      infra_changed: ${{ steps.filter.outputs.infra }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      
-      - id: filter
-        uses: dorny/paths-filter@v3
-        with:
-          filters: |
-            infra:
-              - 'infra/**'
-              - '.github/workflows/infra-apply.yml'
-
   infra:
-    needs: detect
-    if: needs.detect.outputs.infra_changed == 'true'
     uses: ./.github/workflows/infra-apply.yml
     secrets: inherit
 
@@ -37,8 +17,7 @@ jobs:
       base: ${{ github.event.before }}
     secrets: inherit
 
-
   services:
-    needs: [detect, runtime]
+    needs: runtime
     uses: ./.github/workflows/build.yml
     secrets: inherit
