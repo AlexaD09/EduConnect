@@ -60,6 +60,13 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY_QA }}" | tr -d '\r' > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
+      - name: Read bastion + endpoints
+        run: |
+          echo "BASTION_HOST=$(terraform -chdir=infra/terraform output -raw bastion_public_ip)" >> $GITHUB_ENV
+
+          echo "ENDPOINTS_JSON<<EOF" >> $GITHUB_ENV
+          terraform -chdir=infra/terraform output -json service_endpoints >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
 
       - name: Deploy runtime with Turbo (only changed)
         env:
