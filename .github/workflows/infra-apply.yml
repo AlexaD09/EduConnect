@@ -1,12 +1,14 @@
 name: Infra Apply (state -> eip -> infra)
 
 on:
+  workflow_call:
   push:
     branches: [ features, qa, main ]
     paths:
       - "infra/**"
-      - ".github/workflows/infra-apply.yml" 
+      - ".github/workflows/infra-apply.yml"
   workflow_dispatch:
+
 
 concurrency:
   group: infra-${{ github.ref_name }}
