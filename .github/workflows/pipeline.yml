@@ -18,7 +18,4 @@ jobs:
     secrets: inherit
 
 
-  services:
-    needs: runtime
-    uses: ./.github/workflows/build.yml
-    secrets: inherit
+ 
