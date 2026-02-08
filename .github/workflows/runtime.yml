@@ -68,13 +68,15 @@ jobs:
           terraform -chdir=infra/terraform output -json service_endpoints >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
 
-      - name: Deploy runtime with Turbo (only changed)
+      - name: Deploy runtime with Turbo
         env:
           SSH_USER: ec2-user
           REMOTE_DIR_BASE: /home/ec2-user/runtime
         run: |
           export SSH_USER
           export REMOTE_DIR_BASE
-          # turbo decide qué runtimes cambiaron desde "base"
+          export BASTION_HOST
+          export ENDPOINTS_JSON
+
           npx turbo run deploy --filter=runtime-*
 
