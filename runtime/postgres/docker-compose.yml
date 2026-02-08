@@ -13,5 +13,5 @@ services:
       - ./init:/docker-entrypoint-initdb.d
 
 volumes:
-  pgdata: 
+  pgdata:   
      
