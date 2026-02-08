@@ -22,7 +22,7 @@ jobs:
 
       - run: npm ci
 
-      # AWS + Terraform (igual que ya usas)
+     
       - name: Terraform init
         run: terraform -chdir=infra/terraform init -reconfigure
 
