@@ -11,5 +11,8 @@
     "deploy": "turbo run deploy",
     "docker:build": "turbo run docker:build",
     "docker:push": "turbo run docker:push"
+  },
+  "devDependencies": {
+    "turbo": "^2.8.3"
   }
 }

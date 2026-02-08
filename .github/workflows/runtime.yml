@@ -69,4 +69,4 @@ jobs:
           export SSH_USER
           export REMOTE_DIR_BASE
           # turbo decide qué runtimes cambiaron desde "base"
-          npx turbo run deploy --filter=runtime-* --since=${{ inputs.base }}
+          npx turbo run deploy --filter=runtime-* --affected
