@@ -31,11 +31,12 @@ jobs:
     secrets: inherit
 
   runtime:
-    needs: [detect, infra]
+    needs: infra
     uses: ./.github/workflows/runtime.yml
     with:
       base: ${{ github.event.before }}
     secrets: inherit
+
 
   services:
     needs: [detect, runtime]
