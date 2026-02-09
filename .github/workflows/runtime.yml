@@ -15,6 +15,16 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Ensure turbo base commit is available
+        run: |
+          echo "Turbo base: ${{ inputs.base }}"
+          
+          git cat-file -e "${{ inputs.base }}"^{commit} 2>/dev/null || \
+            git fetch --no-tags --prune --depth=0 origin "${{ inputs.base }}"
+
+          
+          git cat-file -e "${{ inputs.base }}"^{commit}
+    
 
       - uses: actions/setup-node@v4
         with:
@@ -52,6 +62,17 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY_QA }}" | tr -d '\r' > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
+
+      - name: Disable SSH host key checking (CI)
+        run: |
+          cat > ~/.ssh/config <<'CFG'
+          Host *
+            StrictHostKeyChecking no
+            UserKnownHostsFile /dev/null
+            LogLevel ERROR
+          CFG
+          chmod 600 ~/.ssh/config
+    
 
       - name: Deploy runtime with Turbo
         env:
