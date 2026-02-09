@@ -1,5 +1,6 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalPassThroughEnv": ["ENDPOINTS_JSON", "BASTION_HOST", "SSH_USER", "REMOTE_DIR_BASE"],
   "tasks": {
     "docker:build": { "cache": false },
     "docker:push":  { "cache": false, "dependsOn": ["docker:build"] },
