@@ -73,7 +73,58 @@ jobs:
           CFG
           chmod 600 ~/.ssh/config
     
+      - name: Bootstrap Docker on runtime hosts
+        env:
+          SSH_USER: ec2-user
+        run: |
+          set -e
 
+          
+          mkdir -p ~/.ssh
+          cat > ~/.ssh/config <<'CFG'
+          Host *
+            StrictHostKeyChecking no
+            UserKnownHostsFile /dev/null
+            LogLevel ERROR
+          CFG
+          chmod 600 ~/.ssh/config
+
+          BASTION_HOST="$(terraform -chdir=infra/terraform output -raw bastion_public_ip)"
+          ENDPOINTS_JSON="$(terraform -chdir=infra/terraform output -json service_endpoints | tr -d '\n')"
+
+          echo "Bastion: $BASTION_HOST"
+
+          IPS=$(python3 - <<'PY'
+          import json, os
+          d=json.loads(os.environ["ENDPOINTS_JSON"])
+          keys=["kafka","mongo","mqtt","postgres","rabbitmq","redis"]
+          print(" ".join([d[k]["ip"] for k in keys if k in d and "ip" in d[k]]))
+          PY
+              )
+
+              echo "Runtime IPs: $IPS"
+
+              for IP in $IPS; do
+                echo "Bootstrapping docker on $IP..."
+                ssh -J ${SSH_USER}@${BASTION_HOST} ${SSH_USER}@${IP} 'bash -s' <<'EOS'
+          set -e
+          if ! command -v docker >/dev/null 2>&1; then
+            sudo yum -y update || true
+            sudo amazon-linux-extras install -y docker || sudo yum -y install docker
+          fi
+          sudo systemctl enable --now docker
+
+          
+          if ! docker compose version >/dev/null 2>&1; then
+            sudo mkdir -p /usr/libexec/docker/cli-plugins
+            sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64" \
+              -o /usr/libexec/docker/cli-plugins/docker-compose
+            sudo chmod +x /usr/libexec/docker/cli-plugins/docker-compose
+          fi
+          EOS
+          done
+
+      
       - name: Deploy runtime with Turbo
         env:
           SSH_USER: ec2-user
