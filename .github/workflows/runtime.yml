@@ -79,25 +79,15 @@ jobs:
         run: |
           set -e
 
-          
-          mkdir -p ~/.ssh
-          cat > ~/.ssh/config <<'CFG'
-          Host *
-            StrictHostKeyChecking no
-            UserKnownHostsFile /dev/null
-            LogLevel ERROR
-          CFG
-          chmod 600 ~/.ssh/config
-
-          BASTION_HOST="$(terraform -chdir=infra/terraform output -raw bastion_public_ip)"
-          ENDPOINTS_JSON="$(terraform -chdir=infra/terraform output -json service_endpoints | tr -d '\n')"
+          export BASTION_HOST="$(terraform -chdir=infra/terraform output -raw bastion_public_ip)"
+          export ENDPOINTS_JSON="$(terraform -chdir=infra/terraform output -json service_endpoints | tr -d '\n')"
 
           echo "Bastion: $BASTION_HOST"
 
           IPS=$(python3 - <<'PY'
           import json, os
-          d=json.loads(os.environ["ENDPOINTS_JSON"])
-          keys=["kafka","mongo","mqtt","postgres","rabbitmq","redis"]
+          d = json.loads(os.environ["ENDPOINTS_JSON"])
+          keys = ["kafka","mongo","mqtt","postgres","rabbitmq","redis"]
           print(" ".join([d[k]["ip"] for k in keys if k in d and "ip" in d[k]]))
           PY
               )
@@ -114,7 +104,6 @@ jobs:
           fi
           sudo systemctl enable --now docker
 
-          
           if ! docker compose version >/dev/null 2>&1; then
             sudo mkdir -p /usr/libexec/docker/cli-plugins
             sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64" \
