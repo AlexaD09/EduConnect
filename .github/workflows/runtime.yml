@@ -47,14 +47,6 @@ jobs:
         run: |
           terraform -chdir=infra/terraform init -reconfigure -input=false -backend-config=$TF_BACKEND
 
-      - name: Read bastion + endpoints
-        run: |
-          echo "BASTION_HOST=$(terraform -chdir=infra/terraform output -raw bastion_public_ip)" >> $GITHUB_ENV
-
-          echo "ENDPOINTS_JSON<<EOF" >> $GITHUB_ENV
-          terraform -chdir=infra/terraform output -json service_endpoints >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
-
       - name: Prepare SSH key
         run: |
           mkdir -p ~/.ssh
@@ -72,11 +64,14 @@ jobs:
         env:
           SSH_USER: ec2-user
           REMOTE_DIR_BASE: /home/ec2-user/runtime
+      - name: Deploy runtime with Turbo
         run: |
-          export SSH_USER
-          export REMOTE_DIR_BASE
-          export BASTION_HOST
-          export ENDPOINTS_JSON
+            export SSH_USER
+            export REMOTE_DIR_BASE
 
-          npx turbo run deploy --filter=runtime-*
+            export BASTION_HOST="$(terraform -chdir=infra/terraform output -raw bastion_public_ip)"
+            export ENDPOINTS_JSON="$(terraform -chdir=infra/terraform output -json service_endpoints)"
+
+            npx turbo run deploy --filter="runtime-*...[${{ inputs.base }}]"
+
 

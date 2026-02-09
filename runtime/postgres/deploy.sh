@@ -8,6 +8,7 @@ set -euo pipefail
 # - SERVICE_KEY: llave privada ya guardada en ~/.ssh/id_rsa
 # - RUNTIME_NAME: "postgres"
 # - REMOTE_DIR: "/home/ec2-user/runtime/postgres"
+: "${ENDPOINTS_JSON:?ENDPOINTS_JSON no está definido. Revisa el step 'Read bastion + endpoints' en runtime.yml}"
 
 IP=$(echo "$ENDPOINTS_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['postgres']['ip'])")
 
